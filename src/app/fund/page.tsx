@@ -84,7 +84,7 @@ export default function FundPage() {
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/fund"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_0_16px_rgba(74,222,128,0.25)] transition-all hover:bg-primary/90 active:scale-[0.98]"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_0_16px_rgba(34,211,238,0.25)] transition-all hover:bg-primary/90 active:scale-[0.98]"
               >
                 <ArrowDownToLine className="h-4 w-4" />
                 Deposit
