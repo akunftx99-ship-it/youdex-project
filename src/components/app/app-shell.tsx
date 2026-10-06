@@ -61,6 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Staking", icon: Layers, badge: "hot", locked: true },
       { label: "Rewards", icon: Gift, badge: "hot", locked: true },
+      { label: "Agent Trade", icon: BrainCircuit, locked: true },
     ],
   },
 ];
