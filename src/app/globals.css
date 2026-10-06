@@ -84,6 +84,7 @@
    * --success, so one hex carried two roles: "this is the app's accent" and
    * "this price went up". They are now separate tokens — brand is cyan, the
    * market signals below stay green/red, which is what traders already read.
+   * Any new component should read these tokens rather than hardcoding a hex.
    */
   --primary: #22d3ee;
   --primary-foreground: #08131a;
