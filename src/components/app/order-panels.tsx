@@ -323,7 +323,13 @@ export function OrderEntry({
     return p * q;
   }, [price, qty]);
 
-  const disabled = !(total >= 5);
+  /**
+   * The button is ready as soon as the order is worth anything. The old $5
+   * floor was a template rule we do not use, and its "Minimum trade" caption
+   * went with it — a disabled button with no visible reason is worse than
+   * letting the trader submit and be told by the venue.
+   */
+  const disabled = !(total > 0);
 
   return (
     <div className="home-glass flex w-[300px] shrink-0 flex-col rounded-2xl p-4 xl:w-[320px]">
@@ -527,10 +533,6 @@ export function OrderEntry({
             <span className="truncate text-right font-mono tabular-nums">100.00 {quote}</span>
           </div>
         </div>
-
-        <p className={cn("h-3.5 text-[10px] leading-3.5 text-warning", total >= 5 && "invisible")}>
-          Minimum trade is $5 {quote}
-        </p>
 
         <button
           type="button"
