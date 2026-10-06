@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import type { ArcSwap } from "@/lib/arc-swaps";
+import { formatArcPrice } from "@/components/app/arc-market-table";
 import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------------------
@@ -36,20 +37,20 @@ function mergeSwaps(current: ArcSwap[], incoming: ArcSwap[]) {
   return [...byId.values()].sort((a, b) => b.at - a.at).slice(0, MAX_ROWS);
 }
 
-function fmtPrice(v: number) {
-  if (v >= 1000) {
-    return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  if (v >= 1) return v.toFixed(4);
-  if (v >= 0.01) return v.toFixed(5);
-  return v.toPrecision(6);
-}
-
 function fmtSize(v: number) {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
   if (v >= 1000) return `${(v / 1000).toFixed(2)}K`;
   if (v >= 1) return v.toFixed(2);
   return v.toPrecision(3);
+}
+
+/**
+ * The tape previously formatted tiny fills with toPrecision(6), which read as
+ * "4.06400e-5" for a 0.00004 fill. Delegate to the shared formatter so swaps
+ * carry the same subscript notation as the tables: 0.00004064 -> 0.0₃4064.
+ */
+function fmtPrice(v: number): string {
+  return formatArcPrice(v);
 }
 
 function fmtClock(ts: number) {
