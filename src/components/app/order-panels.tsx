@@ -523,10 +523,6 @@ export function OrderEntry({
             </span>
           </div>
           <div className="flex min-w-0 justify-between gap-2 text-[11px]">
-            <span className="text-muted-foreground">Oil fee</span>
-            <span className="truncate text-right font-mono tabular-nums">— / 50 Oil</span>
-          </div>
-          <div className="flex min-w-0 justify-between gap-2 text-[11px]">
             <span className="text-muted-foreground">Avbl</span>
             <span className="truncate text-right font-mono tabular-nums">100.00 {quote}</span>
           </div>
