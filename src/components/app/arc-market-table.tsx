@@ -12,6 +12,17 @@ import { TokenAvatar } from "@/components/app/token-avatar";
    Formatting helpers
 --------------------------------------------------------------------------- */
 
+/** U+2080–U+2089 — for collapsing long runs of leading zeros in tiny prices. */
+const SUBSCRIPT = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"];
+
+/** 12 -> "₁₂", 3 -> "₃" (multi-digit handled so 1e-12 prices still parse). */
+function toSubscript(n: number): string {
+  return String(n)
+    .split("")
+    .map((d) => SUBSCRIPT[Number(d)])
+    .join("");
+}
+
 export function formatArcPrice(value: number): string {
   if (!Number.isFinite(value) || value === 0) return "—";
   if (value >= 1000) {
@@ -19,6 +30,22 @@ export function formatArcPrice(value: number): string {
   }
   if (value >= 1) return value.toFixed(4);
   if (value >= 0.01) return value.toFixed(6);
+
+  // Tiny price. 0.00004064 renders as "0.0₃4064": the literal "0" plus the
+  // subscript "3" stand for the four leading zeros, then 4064 are the first
+  // significant digits. Readable at a glance in a table row where ten zeros
+  // would eat the whole cell.
+  const places = value.toFixed(20).replace(/0+$/, "");
+  const dot = places.indexOf(".");
+  if (dot >= 0) {
+    const frac = places.slice(dot + 1);
+    let zeros = 0;
+    while (zeros < frac.length && frac[zeros] === "0") zeros++;
+    if (zeros >= 4) {
+      const sig = (frac.slice(zeros).replace(/0+$/, "") || "0").slice(0, 4);
+      return `0.0${toSubscript(zeros - 1)}${sig}`;
+    }
+  }
   return value.toFixed(10).replace(/0+$/, "").replace(/\.$/, "");
 }
 
