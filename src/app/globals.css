@@ -1,0 +1,541 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+   YouDex design tokens — extracted from https://www.youdex.app
+   The live site is dark-only; :root carries the dark palette directly and
+   `.dark` mirrors it so both class strategies resolve identically.
+--------------------------------------------------------------------------- */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-shell: var(--shell);
+
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-elevated: var(--elevated);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root,
+.dark {
+  --radius: 0.5rem;
+  --shell: #0b0d10;
+  --background: #121417;
+  --foreground: #f8fafc;
+  --card: #181b20;
+  --card-foreground: #f8fafc;
+  --elevated: #23272e;
+  --popover: #181b20;
+  --popover-foreground: #f8fafc;
+  --primary: #00ff1e;
+  --primary-foreground: #121417;
+  --primary-hover: #00cc18;
+  --primary-glow: #00ff1e61;
+  --accent: #2c313a;
+  --accent-foreground: #f8fafc;
+  --accent-glow: #00ff1e61;
+  --secondary: #23272e;
+  --secondary-foreground: #f8fafc;
+  --muted: #23272e;
+  --muted-foreground: #7588a3;
+  --success: #00ff1e;
+  --success-foreground: #121417;
+  --danger: #ef4444;
+  --danger-foreground: #f8fafc;
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+  --warning: #e7b008;
+  --border: #282c34;
+  --input: #282c34;
+  --ring: #00ff1e;
+
+  --chart-1: #00ff1e;
+  --chart-2: #5865f2;
+  --chart-3: #ef4444;
+  --chart-4: #e7b008;
+  --chart-5: #00cc18;
+
+  --sidebar: #181b20;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #00ff1e;
+  --sidebar-primary-foreground: #121417;
+  --sidebar-accent: #23272e;
+  --sidebar-accent-foreground: #f8fafc;
+  --sidebar-border: #282c34;
+  --sidebar-ring: #00ff1e;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans antialiased;
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+  ::selection {
+    background: rgb(0 255 30 / 0.28);
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--shell);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 9999px;
+    border: 2px solid var(--shell);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a3f49;
+  }
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Liquid-glass surface system — copied verbatim from the live stylesheet so
+   the clone keeps the exact gradient stacks, inner highlights and hover lift.
+--------------------------------------------------------------------------- */
+
+.home-glass,
+.home-glass-row,
+.home-glass-pill,
+.home-glass-nav,
+.home-glass-lite {
+  position: relative;
+}
+
+.home-glass {
+  -webkit-backdrop-filter: blur(18px) saturate(180%) brightness(1.04);
+  backdrop-filter: blur(18px) saturate(180%) brightness(1.04);
+  background: linear-gradient(158deg, #ffffff14, #ffffff08 40%, #fff0), #1014186b;
+  border: 1px solid #ffffff1f;
+  transition:
+    background 0.35s,
+    box-shadow 0.35s,
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px #ffffff29,
+    inset 0 -1px #0000004d,
+    0 8px 32px -4px #00000099;
+}
+
+.home-glass::before {
+  content: "";
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(80% 60% at 50% 0, #ffffff24, #ffffff0d 40%, #ffffff03, #0000);
+  width: 110%;
+  height: 45%;
+  transition: opacity 0.35s;
+  position: absolute;
+  top: -1px;
+  left: -5%;
+}
+
+.home-glass:hover {
+  background: linear-gradient(158deg, #ffffff1f, #ffffff0a 40%, #fff0), #14181e85;
+  border-color: #ffffff2e;
+  box-shadow:
+    inset 0 1px #ffffff38,
+    inset 0 -1px #00000047,
+    0 16px 48px -8px #0000008c,
+    0 4px 12px -2px #00000059;
+}
+
+.home-glass:before:hover {
+  opacity: 1.2;
+}
+
+.home-glass-row {
+  background: linear-gradient(158deg, #ffffff14, #ffffff08 40%, #fff0), #181c21;
+  border: 1px solid #ffffff1f;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px #ffffff29,
+    inset 0 -1px #0000004d;
+}
+
+.home-glass-row::before {
+  content: "";
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(80% 60% at 50% 0, #ffffff1f, #ffffff0a 40%, #0000);
+  width: 110%;
+  height: 45%;
+  position: absolute;
+  top: -1px;
+  left: -5%;
+}
+
+.home-glass-pill {
+  -webkit-backdrop-filter: blur(18px) saturate(180%) brightness(1.04);
+  backdrop-filter: blur(18px) saturate(180%) brightness(1.04);
+  background: linear-gradient(158deg, #ffffff17, #ffffff08, #fff0), #10141873;
+  border: 1px solid #ffffff24;
+  border-radius: 9999px;
+  transition:
+    background 0.3s,
+    box-shadow 0.3s,
+    border-color 0.3s,
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px #ffffff2e,
+    inset 0 -1px #00000038,
+    0 4px 14px -2px #00000080;
+}
+
+.home-glass-pill::before {
+  content: "";
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(85% 55% at 50% 0, #ffffff29, #ffffff0f 40%, #ffffff03, #0000);
+  width: 110%;
+  height: 55%;
+  transition: opacity 0.3s;
+  position: absolute;
+  top: -1px;
+  left: -5%;
+}
+
+.home-glass-pill:hover {
+  background: linear-gradient(158deg, #ffffff1f, #ffffff0d, #fff0), #14181e8c;
+  border-color: #ffffff2e;
+  box-shadow:
+    inset 0 1px #ffffff38,
+    inset 0 -1px #00000038,
+    0 6px 20px -4px #00000073;
+}
+
+.home-glass-nav {
+  -webkit-backdrop-filter: blur(18px) saturate(180%) brightness(1.05);
+  backdrop-filter: blur(18px) saturate(180%) brightness(1.05);
+  background: linear-gradient(158deg, #ffffff24, #ffffff0d, #ffffff03), #0e121661;
+  border: 1px solid #ffffff29;
+  border-radius: 9999px;
+  transition:
+    background 0.3s,
+    box-shadow 0.3s,
+    border-color 0.3s;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px #fff3,
+    inset 0 -1px #0000004d,
+    0 8px 32px -4px #00000099;
+}
+
+.home-glass-nav::before {
+  content: "";
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(90% 55% at 50% 0, #ffffff2e, #ffffff12 40%, #ffffff03, #0000);
+  width: 110%;
+  height: 55%;
+  transition: opacity 0.3s;
+  position: absolute;
+  top: -1px;
+  left: -5%;
+}
+
+.home-glass-nav:hover {
+  background: linear-gradient(158deg, #ffffff2e, #ffffff0f, #ffffff03), #12161c7a;
+  border-color: #ffffff38;
+  box-shadow:
+    inset 0 1px #ffffff47,
+    inset 0 -1px #00000042,
+    0 10px 36px -6px #000000a6,
+    0 2px 8px -2px #00000052;
+}
+
+.home-glass-lite {
+  -webkit-backdrop-filter: blur(20px) saturate(160%) brightness(1.05);
+  backdrop-filter: blur(20px) saturate(160%) brightness(1.05);
+  background: linear-gradient(158deg, #ffffff12, #ffffff05 60%, #0000), #14181c61;
+  border: 1px solid #ffffff1a;
+  transition:
+    background 0.3s,
+    box-shadow 0.3s,
+    border-color 0.3s,
+    transform 0.25s;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px #ffffff2e,
+    inset 0 -1px #0003,
+    0 4px 12px -2px #00000059;
+}
+
+.home-glass-lite::before {
+  content: "";
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(75% 50% at 50% 0, #fff3, #ffffff12 40%, #0000);
+  width: 110%;
+  height: 50%;
+  transition: opacity 0.3s;
+  position: absolute;
+  top: -1px;
+  left: -5%;
+}
+
+.home-glass-lite:hover {
+  background: linear-gradient(158deg, #ffffff1a, #ffffff08 60%, #0000), #181c2270;
+  border-color: #ffffff29;
+  box-shadow:
+    inset 0 1px #ffffff42,
+    inset 0 -1px #0000002e,
+    0 6px 18px -4px #0006;
+}
+
+.home-glass-interactive {
+  cursor: pointer;
+  transition:
+    background 0.35s,
+    box-shadow 0.35s,
+    border-color 0.35s,
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home-glass-interactive:hover {
+  border-color: #00ff1e33;
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1.5px #ffffff5c,
+    inset 0 -1px #00000040,
+    0 16px 48px -8px #0000008c,
+    0 4px 12px -2px #00000059,
+    0 0 0 1px #00ff1e14;
+}
+
+.home-glass-interactive:active {
+  transform: translateY(0) scale(0.985);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .home-glass,
+  .home-glass-pill {
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+  }
+  .home-glass-nav {
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    backdrop-filter: blur(18px) saturate(170%);
+  }
+  .home-glass-lite {
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    backdrop-filter: blur(12px) saturate(150%);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Brand loader (diamond + 4 animated bars)
+--------------------------------------------------------------------------- */
+
+.youdex-loader-diamond,
+.youdex-boot-diamond {
+  background: #141c18f0;
+  border: 1px solid #00ff1e33;
+  box-shadow:
+    inset 0 1px #ffffff0d,
+    0 10px 28px #00000042;
+}
+
+.youdex-boot-diamond {
+  border-radius: 1.15rem;
+  width: 4rem;
+  height: 4rem;
+  display: grid;
+  place-items: center;
+  position: relative;
+  transform: rotate(45deg);
+}
+
+.youdex-loader-bars {
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 5px;
+  height: 1.75rem;
+}
+
+.youdex-loader-bar {
+  background: var(--primary);
+  transform-origin: bottom;
+  border-radius: 9999px;
+  width: 5px;
+  animation: 0.85s cubic-bezier(0.45, 0, 0.55, 1) infinite youdex-loader-bar;
+}
+
+.youdex-loader-label,
+.youdex-boot-label {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8e6;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.youdex-page-loader-bg {
+  background-color: var(--background);
+  background-image: none;
+}
+
+@keyframes youdex-loader-bar {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scaleY(0.42);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Entrance animations (pure CSS — no motion/framer-motion, keeps SSR clean)
+--------------------------------------------------------------------------- */
+
+@keyframes youdex-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes youdex-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes youdex-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-fade-up {
+  animation: youdex-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: youdex-fade-in 0.5s ease both;
+}
+
+.animate-marquee {
+  animation: youdex-marquee 38s linear infinite;
+}
+
+/* Recent-swap tape: a fill lands pushed down and flashes, then settles. */
+@keyframes youdex-swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+    background-color: rgb(255 255 255 / 0.09);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    background-color: transparent;
+  }
+}
+
+.animate-swap-in {
+  animation: youdex-swap-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-marquee,
+  .animate-swap-in {
+    animation: none;
+  }
+}

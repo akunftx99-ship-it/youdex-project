@@ -1,0 +1,53 @@
+{
+  "name": "youdex",
+  "version": "0.5.1",
+  "private": true,
+  "description": "YouDex — ARC-network spot exchange interface",
+  "author": "JCodesMore",
+  "license": "MIT",
+  "keywords": [
+    "youdex",
+    "arc",
+    "dex",
+    "spot",
+    "nextjs",
+    "react",
+    "tailwind",
+    "dexscreener"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "next dev -p 3210",
+    "build": "next build",
+    "start": "next start -p 3210",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run build"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.3.0",
+    "@privy-io/react-auth": "^3.47.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lightweight-charts": "^5.2.1",
+    "lucide-react": "^1.6.0",
+    "next": "16.3.5",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "shadcn": "^4.1.0",
+    "tailwind-merge": "^3.5.0",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
