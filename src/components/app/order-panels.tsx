@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import type { ArcSwap } from "@/lib/arc-swaps";
-import { formatArcPrice } from "@/components/app/arc-market-table";
+import { formatArcPrice, formatUsd } from "@/components/app/arc-market-table";
 import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------------------
@@ -35,13 +35,6 @@ function mergeSwaps(current: ArcSwap[], incoming: ArcSwap[]) {
   for (const row of current) byId.set(row.id, row);
   for (const row of incoming) byId.set(row.id, row);
   return [...byId.values()].sort((a, b) => b.at - a.at).slice(0, MAX_ROWS);
-}
-
-function fmtSize(v: number) {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
-  if (v >= 1000) return `${(v / 1000).toFixed(2)}K`;
-  if (v >= 1) return v.toFixed(2);
-  return v.toPrecision(3);
 }
 
 /**
@@ -156,7 +149,7 @@ export function RecentSwaps({
 
         <div className="flex shrink-0 items-center gap-1 pb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/70">
           <span className="min-w-0 flex-1 truncate">Price ({quote})</span>
-          <span className="w-[54px] shrink-0 text-right">Size</span>
+          <span className="w-[60px] shrink-0 text-right">Value</span>
           <span className="w-[58px] shrink-0 text-right">Age</span>
         </div>
 
@@ -182,8 +175,8 @@ export function RecentSwaps({
                 >
                   {fmtPrice(row.price)}
                 </span>
-                <span className="w-[54px] shrink-0 truncate text-right tabular-nums text-foreground/80">
-                  {fmtSize(row.baseAmount)}
+                <span className="w-[60px] shrink-0 truncate text-right tabular-nums text-foreground/80">
+                  {formatUsd(row.valueUsd)}
                 </span>
                 <span className="w-[58px] shrink-0 text-right text-[10px] tabular-nums text-muted-foreground/60">
                   {fmtAge(row.at, now)}
