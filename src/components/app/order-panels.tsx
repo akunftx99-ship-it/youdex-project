@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown } from "lucide-react";
 import type { ArcSwap } from "@/lib/arc-swaps";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,18 @@ import { cn } from "@/lib/utils";
 
 const MAX_ROWS = 25;
 const POLL_MS = 5000;
+
+/* ---------------------------------------------------------------------------
+   Order types for the entry panel. Market leads because it is the default and
+   the one a trader can place without picking a price.
+--------------------------------------------------------------------------- */
+
+type OrderType = "market" | "limit";
+
+const ORDER_TYPES: { key: OrderType; label: string; hint: string }[] = [
+  { key: "market", label: "Market Order", hint: "Fill now at the best available price" },
+  { key: "limit", label: "Limit Order", hint: "Only fill at your price or better" },
+];
 
 type SwapsResponse = { swaps: ArcSwap[]; error?: string };
 
@@ -273,8 +285,37 @@ export function OrderEntry({
   onBbo?: () => void;
 }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
+  /** Market is the default: it is the order you can place without deciding a price. */
+  const [orderType, setOrderType] = useState<OrderType>("market");
+  const [typeOpen, setTypeOpen] = useState(false);
+  const typeBoxRef = useRef<HTMLDivElement | null>(null);
   const [qty, setQty] = useState("");
   const [pct, setPct] = useState(0);
+
+  const isMarket = orderType === "market";
+  const activeType = ORDER_TYPES.find((t) => t.key === orderType) ?? ORDER_TYPES[0];
+
+  /** Click outside closes the order-type menu. */
+  useEffect(() => {
+    if (!typeOpen) return;
+    const onClick = (event: MouseEvent) => {
+      if (typeBoxRef.current && !typeBoxRef.current.contains(event.target as Node)) {
+        setTypeOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [typeOpen]);
+
+  /**
+   * A market order executes at whatever the book offers, so a stale manual
+   * price would be a lie — selecting it snaps the field back to the live market.
+   */
+  const chooseType = (next: OrderType) => {
+    setOrderType(next);
+    setTypeOpen(false);
+    if (next === "market") onBbo?.();
+  };
 
   const total = useMemo(() => {
     const p = Number(price.replace(/,/g, "")) || 0;
@@ -319,45 +360,115 @@ export function OrderEntry({
           })}
         </div>
 
-        {/* Order type */}
-        <button
-          type="button"
-          className="home-glass flex h-9 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-colors"
-        >
-          Limit Order
-          <ChevronDown className="h-3.5 w-3.5" />
-        </button>
+        {/* Order type — opens a menu of order types */}
+        <div ref={typeBoxRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setTypeOpen((v) => !v)}
+            aria-haspopup="listbox"
+            aria-expanded={typeOpen}
+            aria-label={`Order type: ${activeType.label}`}
+            className="home-glass flex h-9 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-colors"
+          >
+            {activeType.label}
+            <ChevronDown
+              className={cn("h-3.5 w-3.5 transition-transform", typeOpen && "rotate-180")}
+            />
+          </button>
 
-        {/* Price + BBO */}
+          {typeOpen ? (
+            <div
+              role="listbox"
+              aria-label="Order type"
+              /*
+               * position comes from the inline style, not a Tailwind class:
+               * `.home-glass { position: relative }` in globals.css outranks
+               * `.absolute`, which would drop the menu into the flow and shove
+               * the price field down instead of overlaying it.
+               */
+              style={{ position: "absolute" }}
+              className="home-glass left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-lg"
+            >
+              {ORDER_TYPES.map((type) => {
+                const active = type.key === orderType;
+                return (
+                  <button
+                    key={type.key}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => chooseType(type.key)}
+                    className={cn(
+                      "flex w-full items-start gap-2 px-2.5 py-2 text-left transition-colors",
+                      active ? "bg-white/[0.08]" : "hover:bg-white/[0.05]",
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={cn(
+                          "block text-[11px] font-semibold",
+                          active ? "text-foreground" : "text-muted-foreground",
+                        )}
+                      >
+                        {type.label}
+                      </span>
+                      <span className="mt-0.5 block text-[9px] leading-tight text-muted-foreground/75">
+                        {type.hint}
+                      </span>
+                    </span>
+                    <Check
+                      className={cn(
+                        "mt-0.5 h-3 w-3 shrink-0 text-primary",
+                        active ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Price + BBO. A market order takes the book's price, so the field
+            shows the live market read-only instead of pretending it is yours. */}
         <div className="flex min-w-0 flex-1 gap-1">
-          <div className="home-glass flex h-9 min-w-0 flex-1 items-center rounded-lg px-1">
+          <div
+            className={cn(
+              "home-glass flex h-9 min-w-0 flex-1 items-center rounded-lg px-1",
+              isMarket && "opacity-70",
+            )}
+          >
             <button
               type="button"
               aria-label={`Decrease Price (${quote})`}
+              disabled={isMarket}
               onClick={() => onPrice("")}
-              className="mr-0.5 grid h-6 w-4 shrink-0 place-items-center text-[10px] text-muted-foreground transition-transform active:scale-95"
+              className="mr-0.5 grid h-6 w-4 shrink-0 place-items-center text-[10px] text-muted-foreground transition-transform active:scale-95 disabled:opacity-30"
             >
               −
             </button>
             <div className="min-w-0 flex-1 space-y-0.5 overflow-hidden px-0.5 text-center">
               <p className="truncate text-[8px] leading-none text-muted-foreground">
-                Price ({quote})
+                {isMarket ? `Market Price (${quote})` : `Price (${quote})`}
               </p>
               <div className="flex h-[13px] items-center justify-center overflow-hidden">
                 <input
                   inputMode="decimal"
                   placeholder="0.00"
                   value={price}
+                  readOnly={isMarket}
                   onChange={(e) => onPrice(e.target.value)}
-                  className="trading-num-input w-full bg-transparent text-center font-mono text-[10px] leading-none tabular-nums outline-none"
+                  aria-label={isMarket ? "Market price (read only)" : `Price (${quote})`}
+                  className="trading-num-input w-full bg-transparent text-center font-mono text-[10px] leading-none tabular-nums outline-none read-only:cursor-default"
                 />
               </div>
             </div>
             <button
               type="button"
               aria-label={`Increase Price (${quote})`}
+              disabled={isMarket}
               onClick={() => onPrice("")}
-              className="ml-0.5 grid h-6 w-4 shrink-0 place-items-center text-[10px] text-muted-foreground transition-transform active:scale-95"
+              className="ml-0.5 grid h-6 w-4 shrink-0 place-items-center text-[10px] text-muted-foreground transition-transform active:scale-95 disabled:opacity-30"
             >
               +
             </button>
@@ -365,8 +476,9 @@ export function OrderEntry({
           <button
             type="button"
             onClick={onBbo}
-            title="Use the live best bid/offer"
-            className="home-glass h-9 w-9 shrink-0 rounded-lg text-[9px] font-semibold transition-colors"
+            disabled={isMarket}
+            title={isMarket ? "Market orders always take the live price" : "Use the live best bid/offer"}
+            className="home-glass h-9 w-9 shrink-0 rounded-lg text-[9px] font-semibold transition-colors disabled:opacity-40"
           >
             BBO
           </button>
