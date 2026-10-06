@@ -133,12 +133,12 @@ export function NavLink({ item, active }: { item: NavItem; active?: boolean }) {
         ITEM_BASE,
         "my-0.5 border",
         active
-          ? "border-primary/35 bg-primary/15 font-semibold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_0_12px_rgba(34,211,238,0.18)]"
+          ? "border-primary/35 bg-primary/15 font-semibold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_0_12px_rgba(74,222,128,0.18)]"
           : "border-transparent font-medium text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
       )}
     >
       {active ? (
-        <span className="absolute left-1 h-4 w-1 rounded-full bg-primary shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
+        <span className="absolute left-1 h-4 w-1 rounded-full bg-primary shadow-[0_0_8px_rgba(74,222,128,0.9)]" />
       ) : null}
       <Icon
         className={cn(
@@ -278,7 +278,7 @@ export function TopBar({
 
       <Link
         href="/fund"
-        className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[0_0_16px_rgba(34,211,238,0.25)] transition-all hover:bg-primary/90 active:scale-95"
+        className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[0_0_16px_rgba(74,222,128,0.25)] transition-all hover:bg-primary/90 active:scale-95"
       >
         <Plus className="h-4 w-4" />
         Deposit

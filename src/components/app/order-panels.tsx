@@ -391,7 +391,7 @@ export function OrderEntry({
             value={pct}
             onChange={(e) => setPct(Number(e.target.value))}
             aria-label="Order size percent"
-            className="w-full accent-[#22d3ee]"
+            className="w-full accent-[#00ff1e]"
           />
           <div className="flex justify-between text-[10px] text-muted-foreground">
             {[0, 25, 50, 75, 100].map((p) => (

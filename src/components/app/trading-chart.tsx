@@ -226,7 +226,7 @@ export function TradingChart({ token, interval }: { token: ArcToken; interval: C
       borderDownColor: "#ef4444",
       wickUpColor: "#00ff1e",
       wickDownColor: "#ef4444",
-      priceLineColor: "#22d3ee",
+      priceLineColor: "#00ff1e",
       priceLineStyle: LineStyle.Dashed,
       priceLineWidth: 1,
     });
@@ -235,7 +235,13 @@ export function TradingChart({ token, interval }: { token: ArcToken; interval: C
       priceFormat: { type: "volume" },
       priceScaleId: "vol",
       color: "rgba(0,255,30,0.35)",
-      /** `lastValueVisible` / `priceLineVisible` off — see the note below. */
+      /**
+       * The histogram rides a separate scale, so its "last value" tag and price
+       * line land on the pane's own axis column — that is the stray red number
+       * that used to sit under the candle labels. The histogram is decorative
+       * here (the tape and VOL field carry the real numbers), so both marks are
+       * switched off.
+       */
       lastValueVisible: false,
       priceLineVisible: false,
     });
