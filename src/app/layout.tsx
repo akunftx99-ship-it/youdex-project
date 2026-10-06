@@ -32,8 +32,21 @@ export const metadata: Metadata = {
   applicationName: "YouDex",
   robots: { index: true, follow: true },
   icons: {
-    icon: [{ url: "/brand/logo-mark.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/brand/logo-mark.svg" }],
+    /*
+     * The tab mark is the cut-out "Y". PNG sizes are declared explicitly so
+     * browsers pick the crisp one instead of scaling a single image, and
+     * /favicon.ico (src/app/favicon.ico) covers the bare request older
+     * browsers still make. Both are the same mark, background removed.
+     */
+    icon: [
+      { url: "/seo/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/seo/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/seo/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/seo/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/seo/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/seo/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: [{ url: "/seo/favicon-32x32.png", type: "image/png" }],
   },
   openGraph: {
     title: "YouDex — ARC Spot Exchange",
