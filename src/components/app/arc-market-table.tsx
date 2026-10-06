@@ -34,14 +34,15 @@ export function formatArcPrice(value: number): string {
   // Tiny price. 0.00004064 renders as "0.0₃4064": the literal "0" plus the
   // subscript "3" stand for the four leading zeros, then 4064 are the first
   // significant digits. Readable at a glance in a table row where ten zeros
-  // would eat the whole cell.
+  // would eat the whole cell. Anything from two leading zeros on (0.002,
+  // 0.00045) gets the treatment; one zero (0.013556) stays a plain decimal.
   const places = value.toFixed(20).replace(/0+$/, "");
   const dot = places.indexOf(".");
   if (dot >= 0) {
     const frac = places.slice(dot + 1);
     let zeros = 0;
     while (zeros < frac.length && frac[zeros] === "0") zeros++;
-    if (zeros >= 4) {
+    if (zeros >= 2) {
       const sig = (frac.slice(zeros).replace(/0+$/, "") || "0").slice(0, 4);
       return `0.0${toSubscript(zeros - 1)}${sig}`;
     }
