@@ -650,7 +650,7 @@ export function OrderEntry({
         {/* Quantity + unit */}
         <div className="space-y-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            <Stepper label={`Quantity (${base})`} value={qty} onChange={updateQty} unit={base} />
+            <Stepper label="Quantity" value={qty} onChange={updateQty} unit={base} />
           </div>
           <p className="h-3.5 truncate text-right font-mono text-[10px] leading-3.5 text-muted-foreground tabular-nums">
             {qty ? `≈ ${total.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${quote}` : "\u00a0"}
@@ -687,7 +687,7 @@ export function OrderEntry({
             <input
               id={totalId}
               inputMode="decimal"
-              placeholder={`0.00 ${quote}`}
+              placeholder="0.00"
               value={totalText !== "" ? totalText : qty !== "" && total > 0 ? total.toLocaleString("en-US", { maximumFractionDigits: 2 }) : ""}
               onChange={(e) => onTotalChange(e.target.value)}
               onFocus={(e) => e.currentTarget.select()}
