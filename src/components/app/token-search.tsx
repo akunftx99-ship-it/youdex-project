@@ -213,7 +213,7 @@ export function TokenSearch() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search pairs or paste address…"
+          placeholder="Search pairs or address"
           aria-label="Search pairs or paste an address"
           aria-expanded={open}
           aria-controls="token-search-results"

@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
    * tunnel. Next 16 blocks cross-origin HMR/dev-resource requests by default,
    * which kills the websocket and leaves every client effect dead on arrival.
    */
+  devIndicators: false,
   allowedDevOrigins: [
     "127.0.0.1",
     "localhost",

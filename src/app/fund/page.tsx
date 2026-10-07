@@ -5,11 +5,9 @@ import Link from "next/link";
 import {
   ArrowDownToLine,
   ArrowLeftRight,
-  Clock,
   Eye,
   EyeOff,
   Send,
-  TrendingUp,
 } from "lucide-react";
 import { useWallets } from "@privy-io/react-auth";
 import { AppShell } from "@/components/app/app-shell";
@@ -83,9 +81,11 @@ export default function FundPage() {
 
               <div className="mt-4 flex items-center gap-3">
                 <span className="text-xs text-muted-foreground">Today&apos;s PNL</span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-primary">
-                  <TrendingUp className="h-3 w-3" />
-                  +0.00$ (+0.00%)
+                <span
+                  title="No fills recorded for this wallet yet"
+                  className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-muted-foreground"
+                >
+                  —
                 </span>
               </div>
             </div>
@@ -93,7 +93,7 @@ export default function FundPage() {
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/fund"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_0_16px_rgba(74,222,128,0.25)] transition-all hover:bg-primary/90 active:scale-[0.98]"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_0_16px_rgba(0,248,248,0.25)] transition-all hover:bg-primary/90 active:scale-[0.98]"
               >
                 <ArrowDownToLine className="h-4 w-4" />
                 Deposit
@@ -146,8 +146,7 @@ export default function FundPage() {
         <section className="home-glass rounded-2xl p-5 sm:p-6">
           <div className="mb-3 flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Spot 100%
+              Portfolio value · {range}
             </span>
             <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
               {["7D", "30D", "90D"].map((entry) => (
@@ -173,16 +172,16 @@ export default function FundPage() {
               {[40, 90, 140].map((y) => (
                 <line key={y} x1="0" y1={y} x2="800" y2={y} stroke="rgba(255,255,255,0.05)" />
               ))}
-              <line x1="0" y1="150" x2="800" y2="150" stroke="#00ff1e" strokeWidth="2" />
+              <line x1="0" y1="150" x2="800" y2="150" stroke="rgba(255,255,255,0.16)" strokeWidth="1" strokeDasharray="4 7" />
             </svg>
-            <p className="relative text-xs text-muted-foreground">
-              No trade activity in {range}
+            <p className="relative max-w-[280px] text-center text-xs text-muted-foreground">
+              No trade history yet — this line fills in after your first swap.
             </p>
           </div>
 
-          <div className="mt-3 flex items-center justify-between font-mono text-xs">
-            <span className="text-primary">+$0.00 / {range}</span>
-            <span className="text-muted-foreground">PNL</span>
+          <div className="mt-3 flex items-center justify-between font-mono text-xs text-muted-foreground">
+            <span>—</span>
+            <span>PNL · {range}</span>
           </div>
         </section>
 
@@ -206,15 +205,6 @@ export default function FundPage() {
                 </button>
               ))}
             </div>
-            <span
-              role="link"
-              aria-disabled="true"
-              title="Coming soon"
-              className="inline-flex cursor-not-allowed items-center gap-1.5 text-xs font-medium text-muted-foreground opacity-60"
-            >
-              <Clock className="h-3.5 w-3.5" />
-              History
-            </span>
           </div>
 
           {tab === "assets" ? (
@@ -243,7 +233,7 @@ export default function FundPage() {
                     </tr>
                   ) : (
                     rows.map((item) => (
-                      <tr key={item.address} className="border-b border-white/[0.04]">
+                      <tr key={item.address} className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.04]">
                         <td className="py-3">
                           <div className="flex items-center gap-3">
                             <TokenAvatar symbol={item.symbol} address={item.address} image={item.image} size={32} />
@@ -255,7 +245,7 @@ export default function FundPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 text-right font-mono text-sm text-foreground">
+                        <td className="py-3 text-right font-mono text-sm tabular-nums text-foreground">
                           {hidden ? "••••" : formatPortfolioAmount(item.balance)}
                         </td>
                         <td className="py-3 text-right font-mono text-sm text-foreground">

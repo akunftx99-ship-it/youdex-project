@@ -186,6 +186,14 @@ export function TradingChart({ token, interval }: { token: ArcToken; interval: C
       },
       rightPriceScale: {
         borderColor: "rgba(255,255,255,0.08)",
+        /**
+         * The axis keeps its own plain-decimal labels: the subscript formatter
+         * the legend uses collapses every tick to one string on micro-priced
+         * pairs, and lightweight-charts then drops them all — an empty axis.
+         */
+        textColor: "#8fa3bd",
+        ticksVisible: true,
+        minimumWidth: 56,
         // Candles own the top 74% of the pane; the volume histogram sits in the
         // remaining 26%. The two numbers must match the "vol" scale margin
         // below, or the price labels stop lining up with the candles.
@@ -216,10 +224,18 @@ export function TradingChart({ token, interval }: { token: ArcToken; interval: C
           labelBackgroundColor: "#1c2129",
         },
       },
-      localization: { priceFormatter: (p: number) => formatArcPrice(p) },
     });
 
+    /**
+     * Adaptive price precision: a 0.000005 token needs ~10 decimals before two
+     * neighbouring ticks differ; an 85,342 one needs 2. Without this the axis
+     * labels on micro-priced pairs merge and the scale renders empty.
+     */
+    const probe = tokenRef.current.price > 0 ? tokenRef.current.price : 1;
+    const precision = probe >= 1000 ? 2 : probe >= 1 ? 4 : probe >= 0.01 ? 6 : Math.min(12, Math.max(8, Math.ceil(-Math.log10(probe)) + 5));
+
     const candle = chart.addSeries(CandlestickSeries, {
+      priceFormat: { type: "price", precision, minMove: Number(`1e-${precision}`) },
       upColor: "#00ff1e",
       downColor: "#ef4444",
       borderUpColor: "#00ff1e",

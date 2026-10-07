@@ -288,7 +288,7 @@ export function ArcMarketTable({
                   <div className="flex items-center justify-end gap-1.5">
                     <a
                       href={`${basePath}?pair=${encodeURIComponent(token.pairAddress)}`}
-                      className="inline-flex h-7 items-center rounded-lg border border-success/30 bg-success/10 px-3 text-xs font-semibold text-success transition-colors hover:border-success/60 hover:bg-success/20"
+                      className="inline-flex h-7 items-center rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition-colors hover:border-primary/60 hover:bg-primary/20"
                     >
                       Trade
                     </a>

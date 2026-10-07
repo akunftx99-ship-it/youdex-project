@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowDownToLine,
@@ -11,7 +11,6 @@ import {
   Info,
   Layers,
   Sparkles,
-  TrendingUp,
 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { ArcMarketTable, formatUsd } from "@/components/app/arc-market-table";
@@ -25,7 +24,17 @@ import {
   type ArcToken,
 } from "@/lib/arc-data";
 import { useArcLive } from "@/hooks/use-arc-live";
+import { useArcPortfolio } from "@/hooks/use-arc-portfolio";
+import { formatPortfolioAmount } from "@/lib/arc-portfolio";
+import { useWallets } from "@privy-io/react-auth";
 import { cn } from "@/lib/utils";
+
+/** Read-only dashboard preview: /app?address=0x… (no wallet needed). */
+function subscribePreview() { return () => {}; }
+function readPreview(): string | undefined {
+  const q = new URLSearchParams(window.location.search).get("address");
+  return q && /^0x[0-9a-fA-F]{40}$/.test(q) ? q : undefined;
+}
 
 type Tab = "hot" | "gainers" | "losers" | "new" | "all";
 
@@ -48,6 +57,13 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("hot");
   const [hidden, setHidden] = useState(false);
   const { status, mergeAll, totals } = useArcLive();
+
+  /** Real wallet balance — same on-chain read the Fund page uses. */
+  const { wallets } = useWallets();
+  const connected = wallets.find((w) => w.walletClientType === "privy")?.address ?? wallets[0]?.address;
+  const preview = useSyncExternalStore(subscribePreview, readPreview, () => undefined);
+  const address = preview ?? connected;
+  const { data: portfolio } = useArcPortfolio(address);
 
   /**
    * Tabs are ranked from live numbers, not the snapshot's frozen order: the
@@ -107,16 +123,26 @@ export default function DashboardPage() {
 
                 <div className="mt-3 flex items-baseline gap-2">
                   <span className="font-heading text-4xl font-bold tracking-tight text-foreground">
-                    {hidden ? "••••" : "100.00"}
+                    {hidden ? "••••" : portfolio ? formatPortfolioAmount(portfolio.usdcBalance) : "—"}
                   </span>
                   <span className="text-sm font-medium text-muted-foreground">USDC</span>
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {address
+                    ? portfolio
+                      ? `≈ ${hidden ? "$•••" : formatUsd(portfolio.totalUsd)} across ${portfolio.items.length} asset${portfolio.items.length === 1 ? "" : "s"}`
+                      : "reading balances…"
+                    : "Connect a wallet to read balances"}
+                </p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <span className="text-xs text-muted-foreground">Today&apos;s PNL</span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-success">
-                    <TrendingUp className="h-3 w-3" />
-                    +0.00$ (+0.00%)
+                  {/* No PNL source routes this wallet yet — a dash beats inventing 0.00%. */}
+                  <span
+                    title="No fills recorded for this wallet yet"
+                    className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-muted-foreground"
+                  >
+                    —
                   </span>
                 </div>
 
@@ -134,7 +160,7 @@ export default function DashboardPage() {
               <div className="flex min-w-[150px] flex-col gap-2">
                 <Link
                   href="/fund"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-success px-5 text-sm font-semibold text-success-foreground shadow-[0_0_16px_rgba(0,255,30,0.22)] transition-all hover:bg-success/90 active:scale-[0.98]"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_0_16px_rgba(0,248,248,0.25)] transition-all hover:bg-primary/90 active:scale-[0.98]"
                 >
                   <ArrowDownToLine className="h-4 w-4" />
                   Deposit

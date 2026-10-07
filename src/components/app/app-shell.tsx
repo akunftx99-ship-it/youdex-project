@@ -157,14 +157,21 @@ export function NavLink({ item, active }: { item: NavItem; active?: boolean }) {
 export const OUT_OF_SCOPE_ICONS = { Target, ListTodo, BrainCircuit, Crown, Users, Send };
 
 function MiniTicker() {
-  // Top two ARC pairs by 24h volume, straight from the DexScreener snapshot.
-  const rows = ARC_HOT.slice(0, 2).map((t) => ({
+  /**
+   * Two hot ARC pairs — deliberately NOT the pair the header already shows, so
+   * the sidebar adds information instead of repeating the top bar.
+   */
+  const headerPair = ARC_TOP_VOLUME[0]?.pair;
+  const rows = ARC_HOT.filter((t) => t.pair !== headerPair).slice(0, 2).map((t) => ({
     pair: t.pair,
     price: formatArcPrice(t.price),
     change: t.change.h24,
   }));
   return (
-    <div className="mx-1 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="mx-1 space-y-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70">
+        Market watch
+      </p>
       {rows.map((row) => (
         <div key={`${row.pair}-${row.price}`} className="flex items-center justify-between py-1">
           <span className="text-[11px] font-medium text-muted-foreground">{row.pair}</span>
@@ -172,7 +179,7 @@ function MiniTicker() {
           <span
             className={cn(
               "font-mono text-[10px] font-semibold",
-              row.change >= 0 ? "text-primary" : "text-danger",
+              row.change >= 0 ? "text-success" : "text-danger",
             )}
           >
             {row.change >= 0 ? "+" : ""}
@@ -264,7 +271,7 @@ export function TopBar({
           <span
             className={cn(
               "font-mono text-[11px] font-semibold",
-              liveChange >= 0 ? "text-primary" : "text-danger",
+              liveChange >= 0 ? "text-success" : "text-danger",
             )}
           >
             {liveChange >= 0 ? "+" : ""}

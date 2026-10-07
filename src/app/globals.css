@@ -79,13 +79,13 @@
   --elevated: #23272e;
   --popover: #181b20;
   --popover-foreground: #f8fafc;
-  --primary: #00ff1e;
-  --primary-foreground: #121417;
-  --primary-hover: #00cc18;
-  --primary-glow: #00ff1e61;
+  --primary: #00f8f8;
+  --primary-foreground: #08181a;
+  --primary-hover: #00d4d4;
+  --primary-glow: #00f8f861;
   --accent: #2c313a;
   --accent-foreground: #f8fafc;
-  --accent-glow: #00ff1e61;
+  --accent-glow: #00f8f861;
   --secondary: #23272e;
   --secondary-foreground: #f8fafc;
   --muted: #23272e;
@@ -139,11 +139,11 @@
     @apply font-heading;
   }
   ::selection {
-    background: rgb(0 255 30 / 0.28);
+    background: rgb(0 248 248 / 0.26);
   }
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
     background: var(--shell);
@@ -154,7 +154,26 @@
     border: 2px solid var(--shell);
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3a3f49;
+    background: #2f5f66;
+  }
+
+  /* Visible keyboard focus everywhere — brand-coloured, never animated. */
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--primary) 70%, transparent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Anyone who asked for less motion gets none of the decorative kind. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -187,7 +206,7 @@
   transition:
     background 0.35s,
     box-shadow 0.35s,
-    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
   overflow: hidden;
   box-shadow:
     inset 0 1px #ffffff29,
@@ -253,7 +272,7 @@
     background 0.3s,
     box-shadow 0.3s,
     border-color 0.3s,
-    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
   overflow: hidden;
   box-shadow:
     inset 0 1px #ffffff2e,

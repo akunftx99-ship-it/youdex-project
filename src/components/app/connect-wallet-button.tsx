@@ -61,7 +61,7 @@ export function ConnectWalletButton({ compact = false }: { compact?: boolean }) 
         type="button"
         onClick={() => login()}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-xl bg-primary font-semibold text-primary-foreground shadow-[0_0_16px_rgba(0,255,30,0.25)] transition-all hover:bg-primary/90 active:scale-95",
+          "inline-flex items-center gap-1.5 rounded-xl bg-primary font-semibold text-primary-foreground shadow-[0_0_16px_rgba(0,248,248,0.25)] transition-all hover:bg-primary/90 active:scale-95",
           compact ? "px-3" : "px-4",
           size,
         )}

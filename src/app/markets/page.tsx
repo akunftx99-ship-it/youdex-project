@@ -79,7 +79,7 @@ export default function MarketsPage() {
         {/* ---- ARC network summary ---- */}
         <section className="grid gap-4 sm:grid-cols-3">
           {[
-            { label: "Network", value: ARC_CHAIN.toUpperCase(), sub: "DexScreener chain id" },
+            { label: "Network", value: ARC_CHAIN.toUpperCase(), sub: "Live pools, read on-chain" },
             { label: "24h Volume", value: formatUsd(totals.volume || ARC_TOTAL_VOLUME_24H), sub: "All tracked pairs" },
             { label: "Liquidity", value: formatUsd(totals.liquidity || ARC_TOTAL_LIQUIDITY), sub: "All tracked pools" },
           ].map((card) => (
