@@ -4,7 +4,7 @@ import { useOneInchSwap } from "@/hooks/use-one-inch-swap";
 import { useArcBalances } from "@/hooks/use-arc-balances";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { ArcSwap } from "@/lib/arc-swaps";
 import { formatArcPrice, formatUsd, unformatArcPrice } from "@/components/app/arc-market-table";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,13 @@ import { cn } from "@/lib/utils";
    and rendered newest-first.
 --------------------------------------------------------------------------- */
 
-const MAX_ROWS = 25;
+/** Upstream (CoinMarketCap via Peach) returns the newest N only, max 100, and
+ *  ignores every offset/page parameter — so history is whatever we keep. */
+const FETCH_LIMIT = 100;
+/** How many swaps the tape remembers — the deepest history a user can page to. */
+const BUFFER_MAX = 100;
+/** Rows per page; the pager walks the buffer 25 at a time. */
+const PAGE_SIZE = 25;
 const POLL_MS = 5000;
 
 /* ---------------------------------------------------------------------------
@@ -37,7 +43,7 @@ function mergeSwaps(current: ArcSwap[], incoming: ArcSwap[]) {
   const byId = new Map<string, ArcSwap>();
   for (const row of current) byId.set(row.id, row);
   for (const row of incoming) byId.set(row.id, row);
-  return [...byId.values()].sort((a, b) => b.at - a.at).slice(0, MAX_ROWS);
+  return [...byId.values()].sort((a, b) => b.at - a.at).slice(0, BUFFER_MAX);
 }
 
 /**
@@ -80,6 +86,14 @@ export function RecentSwaps({
   const [rows, setRows] = useState<ArcSwap[]>([]);
   const [status, setStatus] = useState<"connecting" | "live" | "offline">("connecting");
   const [now, setNow] = useState(() => Date.now());
+  /**
+   * The id of the first row on screen. null means "the newest page", which keeps
+   * following the feed; any other value pins the window to that swap so older
+   * fills stay put while new ones land above them.
+   */
+  const [anchor, setAnchor] = useState<string | null>(null);
+  /** rows[0] at the moment the window was pinned — the "N new" detector. */
+  const [anchorTop, setAnchorTop] = useState<string | null>(null);
 
   // Ages drift even when no fill lands, so re-render them on their own clock.
   useEffect(() => {
@@ -97,7 +111,7 @@ export function RecentSwaps({
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/swaps?address=${address}&limit=${MAX_ROWS}`, {
+        const res = await fetch(`/api/swaps?address=${address}&limit=${FETCH_LIMIT}`, {
           signal: controller.signal,
           cache: "no-store",
         });
@@ -119,6 +133,34 @@ export function RecentSwaps({
       controller.abort();
     };
   }, [address]);
+
+  // Window maths. A missing anchor (evicted from the buffer) falls back to newest.
+  const found = anchor ? rows.findIndex((row) => row.id === anchor) : 0;
+  const start = anchor && found >= 0 ? found : 0;
+  const page = Math.floor(start / PAGE_SIZE) + 1;
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const visible = rows.slice(start, start + PAGE_SIZE);
+  const atNewest = start === 0;
+  const atOldest = start + PAGE_SIZE >= rows.length;
+  const newSincePinned = Boolean(anchor && rows[0] && rows[0].id !== anchorTop);
+
+  const goNewer = () => {
+    const next = Math.max(0, start - PAGE_SIZE);
+    if (next === 0) {
+      setAnchor(null);
+      setAnchorTop(null);
+    } else {
+      setAnchor(rows[next]?.id ?? null);
+      setAnchorTop(rows[0]?.id ?? null);
+    }
+  };
+
+  const goOlder = () => {
+    const next = start + PAGE_SIZE;
+    if (next >= rows.length) return;
+    setAnchor(rows[next]?.id ?? null);
+    setAnchorTop(rows[0]?.id ?? null);
+  };
 
   const badge =
     status === "live"
@@ -149,13 +191,61 @@ export function RecentSwaps({
           <span className="w-[58px] shrink-0 text-right">Age</span>
         </div>
 
+        {/* Pager — walks the buffered history 25 fills at a time. */}
+        <div className="flex shrink-0 items-center justify-between gap-2 pb-1.5 text-[10px]">
+          <button
+            type="button"
+            onClick={goNewer}
+            disabled={atNewest}
+            title="Newer fills"
+            className="inline-flex items-center gap-1 rounded-md border border-white/10 px-1.5 py-0.5 font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-muted-foreground"
+          >
+            <ChevronLeft className="h-3 w-3" />
+            Newer
+          </button>
+
+          <span className="flex items-center gap-1.5 font-mono tabular-nums text-muted-foreground/70">
+            {rows.length > 0 ? `${start + 1}–${start + visible.length} / ${rows.length}` : "—"}
+            <span className="text-muted-foreground/40">·</span>
+            {atNewest ? (
+              <span className="text-success">live</span>
+            ) : (
+              <span>{page}/{pageCount}</span>
+            )}
+          </span>
+
+          <button
+            type="button"
+            onClick={goOlder}
+            disabled={atOldest}
+            title="Earlier fills"
+            className="inline-flex items-center gap-1 rounded-md border border-white/10 px-1.5 py-0.5 font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-muted-foreground"
+          >
+            Older
+            <ChevronRight className="h-3 w-3" />
+          </button>
+        </div>
+
+        {newSincePinned ? (
+          <button
+            type="button"
+            onClick={() => {
+              setAnchor(null);
+              setAnchorTop(null);
+            }}
+            className="mb-1 shrink-0 self-start rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/20"
+          >
+            ↑ new fills — back to live
+          </button>
+        ) : null}
+
         <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-hidden">
           {rows.length === 0 ? (
             <p className="py-6 text-center text-[12px] text-muted-foreground">
               {status === "offline" ? "Swap feed unavailable" : "Loading swaps…"}
             </p>
           ) : (
-            rows.map((row) => (
+            visible.map((row) => (
               <div
                 key={row.id}
                 title={`${row.side === "buy" ? "Buy" : "Sell"} ${row.baseAmount.toLocaleString("en-US", {
