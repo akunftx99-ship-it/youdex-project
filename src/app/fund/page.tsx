@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowDownToLine,
@@ -11,35 +11,45 @@ import {
   Send,
   TrendingUp,
 } from "lucide-react";
+import { useWallets } from "@privy-io/react-auth";
 import { AppShell } from "@/components/app/app-shell";
 import { ArcTokenMark } from "@/components/app/arc-market-table";
 import { ARC_HOT } from "@/lib/arc-data";
+import { formatPortfolioAmount, formatUsd } from "@/lib/arc-portfolio";
+import { useArcPortfolio } from "@/hooks/use-arc-portfolio";
 import { cn } from "@/lib/utils";
 
-/** Wallet holdings — settled in ARC-network assets. */
-const ASSETS = [
-  {
-    token: ARC_HOT.find((t) => t.symbol.toUpperCase() === "USDC") ?? null,
-    symbol: "USDC",
-    note: "Spot wallet",
-    amount: "100.00",
-    value: "$100.00",
-    action: null,
-  },
-  {
-    token: ARC_HOT[0] ?? null,
-    symbol: ARC_HOT[0]?.symbol ?? "—",
-    note: "Highest-volume ARC pair",
-    amount: "0.0000",
-    value: "—",
-    action: "Trade",
-  },
-];
+/** Read-only portfolio preview: /fund?address=0x… (no wallet needed). */
+function subscribePreview() { return () => {}; }
+function readPreview(): string | undefined {
+  const q = new URLSearchParams(window.location.search).get("address");
+  return q && /^0x[0-9a-fA-F]{40}$/.test(q) ? q : undefined;
+}
 
 export default function FundPage() {
   const [hidden, setHidden] = useState(false);
   const [range, setRange] = useState("7D");
   const [tab, setTab] = useState<"assets" | "history">("assets");
+
+  // Holdings come straight off Arc's RPC (one batched Multicall3 sweep), keyed
+  // by the connected wallet — no hardcoded numbers, no indexer in the path.
+  // ?address=0x… previews any wallet read-only (handy for sharing a portfolio).
+  const { wallets } = useWallets();
+  const connected = wallets.find((w) => w.walletClientType === "privy")?.address ?? wallets[0]?.address;
+  const preview = useSyncExternalStore(subscribePreview, readPreview, () => undefined);
+  const address = preview ?? connected;
+  const { data, loading, error } = useArcPortfolio(address);
+
+  const usdc = data?.usdcBalance ?? "0";
+  const totalUsd = data?.totalUsd ?? 0;
+  const rows = useMemo(() => data?.items ?? [], [data]);
+  const status = !address
+    ? "connect a wallet to read balances"
+    : error
+      ? `read failed — ${error}`
+      : loading && !data
+        ? "reading balances…"
+        : `${rows.length} asset${rows.length === 1 ? "" : "s"} on ARC`;
 
   return (
     <AppShell current="/fund" title="Fund">
@@ -64,12 +74,12 @@ export default function FundPage() {
 
               <div className="mt-3 flex items-baseline gap-2">
                 <span className="font-heading text-4xl font-bold tracking-tight text-foreground">
-                  {hidden ? "••••••" : "100.00"}
+                  {hidden ? "••••••" : formatPortfolioAmount(usdc)}
                 </span>
                 <span className="text-sm font-medium text-muted-foreground">USDC</span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                ≈ {hidden ? "$•••" : "$100.00"}
+                ≈ {hidden ? "$•••" : formatUsd(totalUsd)} · {status}
               </p>
 
               <div className="mt-4 flex items-center gap-3">
@@ -116,7 +126,7 @@ export default function FundPage() {
                 Spot
               </p>
               <p className="mt-1 font-mono text-sm font-semibold text-foreground">
-                {hidden ? "••••" : "100.00"}{" "}
+                {hidden ? "••••" : formatPortfolioAmount(usdc)}{" "}
                 <span className="text-xs font-medium text-muted-foreground">USDC</span>
               </p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">Spot equity</p>
@@ -220,39 +230,53 @@ export default function FundPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {ASSETS.map((asset) => (
-                    <tr key={asset.symbol} className="border-b border-white/[0.04]">
-                      <td className="py-3">
-                        <div className="flex items-center gap-3">
-                          <ArcTokenMark token={asset.token ?? ARC_HOT[0]} />
-                          <div>
-                            <p className="font-semibold text-foreground">{asset.symbol}</p>
-                            <p className="text-[11px] text-muted-foreground">{asset.note}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 text-right font-mono text-sm text-foreground">
-                        {hidden && asset.symbol === "USDC" ? "••••" : asset.amount}
-                      </td>
-                      <td className="py-3 text-right font-mono text-sm text-foreground">
-                        {hidden && asset.symbol === "USDC" ? "$•••" : asset.value}
-                      </td>
-                      <td className="py-3 text-right">
-                        {asset.action ? (
-                          <span
-                            role="button"
-                            aria-disabled="true"
-                            title="Coming soon"
-                            className="inline-flex h-7 cursor-not-allowed items-center rounded-lg border border-white/12 px-3 text-xs font-semibold text-muted-foreground opacity-60"
-                          >
-                            {asset.action}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                  {!address ? (
+                    <tr>
+                      <td colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                        Connect a wallet to see your ARC holdings.
                       </td>
                     </tr>
-                  ))}
+                  ) : rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                        {error ? `Could not read balances — ${error}` : loading ? "Reading balances…" : "No ARC tokens in this wallet yet."}
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((item) => (
+                      <tr key={item.address} className="border-b border-white/[0.04]">
+                        <td className="py-3">
+                          <div className="flex items-center gap-3">
+                            <ArcTokenMark token={item.token ?? ARC_HOT[0]} />
+                            <div>
+                              <p className="font-semibold text-foreground">{item.symbol}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {item.symbol === "USDC" ? "Spot wallet" : item.name}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 text-right font-mono text-sm text-foreground">
+                          {hidden ? "••••" : formatPortfolioAmount(item.balance)}
+                        </td>
+                        <td className="py-3 text-right font-mono text-sm text-foreground">
+                          {hidden ? "$•••" : formatUsd(item.valueUsd)}
+                        </td>
+                        <td className="py-3 text-right">
+                          {item.symbol === "USDC" ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <Link
+                              href="/trade"
+                              className="inline-flex h-7 items-center rounded-lg border border-white/12 px-3 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                            >
+                              Trade
+                            </Link>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
