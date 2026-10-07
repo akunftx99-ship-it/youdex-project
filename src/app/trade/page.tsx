@@ -6,6 +6,8 @@ import { ChevronDown, Loader2, RotateCw, TrendingDown, TrendingUp } from "lucide
 import { AppShell } from "@/components/app/app-shell";
 import { ArcTokenMark, formatArcPrice, formatUsd } from "@/components/app/arc-market-table";
 import { useTradeToken } from "@/hooks/use-trade-token";
+import { useArcBalances } from "@/hooks/use-arc-balances";
+import { ARC_TOKENS } from "@/lib/arc-chain";
 import { CHART_INTERVALS, TradingChart, type ChartInterval } from "@/components/app/trading-chart";
 import { OrderEntry, RecentSwaps } from "@/components/app/order-panels";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,10 @@ function SpotTerminal() {
    * falling back to the first trending token.
    */
   const { token, origin, loading, unknown } = useTradeToken(pairParam);
+
+  /** The header readout used to be the literal string "100.00 USDC". Show the
+   *  wallet's real USDC balance instead — a fake Avbl is worse than a blank one. */
+  const { balances } = useArcBalances([ARC_TOKENS.USDC]);
 
   const [tf, setTf] = useState<ChartInterval>("15m");
   const [indicators, setIndicators] = useState<string[]>(["MA", "VOL"]);
@@ -125,7 +131,12 @@ function SpotTerminal() {
                   Avbl
                 </span>
                 <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
-                  100.00 USDC
+                  {(() => {
+                    const b = balances[ARC_TOKENS.USDC];
+                    if (!b) return "— USDC";
+                    const v = Number(b.raw) / 10 ** b.decimals;
+                    return `${v.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDC`;
+                  })()}
                 </span>
               </div>
             </div>

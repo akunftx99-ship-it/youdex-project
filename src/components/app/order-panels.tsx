@@ -2,6 +2,7 @@
 
 import { useOneInchSwap } from "@/hooks/use-one-inch-swap";
 import { useArcSwap } from "@/hooks/use-arc-swap";
+import { useArcBalances } from "@/hooks/use-arc-balances";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
@@ -227,7 +228,7 @@ function Stepper({
         <button
           type="button"
           aria-label={`Decrease ${label}`}
-          onClick={() => onChange("")}
+          onClick={() => onChange(stepValue(value, -1))}
           className="mr-0.5 grid h-6 w-4 shrink-0 place-items-center text-[10px] text-muted-foreground transition-transform active:scale-95"
         >
           −
@@ -240,14 +241,14 @@ function Stepper({
               placeholder="0.00"
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              className="w-full bg-transparent text-center font-mono text-[10px] leading-none tabular-nums outline-none"
+              className="w-full rounded bg-transparent text-center font-mono text-[10px] leading-none tabular-nums outline-none focus:bg-white/[0.06] focus:ring-1 focus:ring-primary/50"
             />
           </div>
         </div>
         <button
           type="button"
           aria-label={`Increase ${label}`}
-          onClick={() => onChange("")}
+          onClick={() => onChange(stepValue(value, 1))}
           className="ml-0.5 grid h-6 w-4 shrink-0 place-items-center text-[10px] text-muted-foreground transition-transform active:scale-95"
         >
           +
@@ -265,6 +266,19 @@ function Stepper({
       ) : null}
     </div>
   );
+}
+
+/**
+ * Nudge for the +/- steppers. They used to call onChange("") — both buttons just
+ * wiped the field, so the column read as dead. Step by 10% of the current value
+ * with a floor of 1 unit, so a nudge always visibly moves the number.
+ */
+function stepValue(current: string, direction: 1 | -1): string {
+  const n = Number(current) || 0;
+  const step = n > 0 ? Math.max(1, n * 0.1) : 1;
+  const next = direction > 0 ? (n || 0) + step : n - step;
+  if (next <= 0) return "";
+  return Number(next.toFixed(8)).toString();
 }
 
 export function OrderEntry({
@@ -359,6 +373,8 @@ export function OrderEntry({
         amountIn: amount,
       });
     }
+    // a fill moves both balances; the Avbl line should follow it
+    refreshBalances();
   };
 
   /** Buy spends quote, sell spends base. */
@@ -369,6 +385,29 @@ export function OrderEntry({
 
   const busy = ["quoting", "approving", "awaiting-approval", "swapping", "pending", "signing", "placing-order"]
     .includes(phase.kind);
+
+  /** Real wallet balances — the Avbl line and the percent buttons size against
+   *  these. Both used to be decorative. */
+  const { balances, refresh: refreshBalances } = useArcBalances([tokenAddress, quoteAddress]);
+  const priceNum = unformatArcPrice(price);
+
+  /** Buying spends the quote token, selling spends the base token. */
+  const availableRaw = side === "buy" ? balances[quoteAddress] : tokenAddress ? balances[tokenAddress] : undefined;
+  const available = availableRaw ? Number(availableRaw.raw) / 10 ** availableRaw.decimals : 0;
+
+  /** Percent buttons write a real quantity: for a buy that is
+   *  (balance x pct) / price, for a sell it is just balance x pct. */
+  const applyPct = (p: number) => {
+    setPct(p);
+    if (p <= 0 || !(available > 0)) return;
+    if (side === "buy") {
+      if (!(priceNum > 0)) return;
+      const spend = (available * p) / 100;
+      setQty(Number((spend / priceNum).toPrecision(8)).toString());
+    } else {
+      setQty(Number(((available * p) / 100).toPrecision(8)).toString());
+    }
+  };
 
   const isMarket = orderType === "market";
   const activeType = ORDER_TYPES.find((t) => t.key === orderType) ?? ORDER_TYPES[0];
@@ -586,13 +625,13 @@ export function OrderEntry({
             min={0}
             max={100}
             value={pct}
-            onChange={(e) => setPct(Number(e.target.value))}
+            onChange={(e) => applyPct(Number(e.target.value))}
             aria-label="Order size percent"
             className="w-full accent-[#00ff1e]"
           />
           <div className="flex justify-between text-[10px] text-muted-foreground">
             {[0, 25, 50, 75, 100].map((p) => (
-              <button key={p} type="button" onClick={() => setPct(p)} className="tabular-nums">
+              <button key={p} type="button" onClick={() => applyPct(p)} className="tabular-nums hover:text-foreground">
                 {p}%
               </button>
             ))}
@@ -609,7 +648,18 @@ export function OrderEntry({
           </div>
           <div className="flex min-w-0 justify-between gap-2 text-[11px]">
             <span className="text-muted-foreground">Avbl</span>
-            <span className="truncate text-right font-mono tabular-nums">100.00 {quote}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-mono tabular-nums">
+                {available > 0
+                  ? `${available.toLocaleString("en-US", { maximumFractionDigits: 4 })} ${side === "buy" ? quote : base}`
+                  : `— ${side === "buy" ? quote : base}`}
+              </span>
+              {available > 0 ? (
+                <button type="button" onClick={() => applyPct(100)} className="shrink-0 text-[10px] font-semibold text-primary hover:underline">
+                  MAX
+                </button>
+              ) : null}
+            </span>
           </div>
         </div>
 
