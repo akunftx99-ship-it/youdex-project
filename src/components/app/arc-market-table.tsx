@@ -23,6 +23,29 @@ function toSubscript(n: number): string {
     .join("");
 }
 
+/**
+ * Inverse of formatArcPrice for the order form's total.
+ *
+ * The price field carries a *display* string, and for tiny tokens that is
+ * "0.0₃4064" — which Number() turns into NaN, so every total came out 0 and the
+ * Buy/Sell button stayed disabled on exactly the tokens this app is full of.
+ * Expanding the subscript back to real zeros fixes the arithmetic.
+ */
+export function unformatArcPrice(text: string): number {
+  const t = text.replace(/,/g, "").trim();
+  if (!t) return 0;
+  const sub = t.match(/^0\.0([₀₁₂₃₄₅₆₇₈₉]+)(\d*)$/);
+  if (sub) {
+    const digits = sub[1].split("").reduce((acc, ch) => acc * 10 + SUBSCRIPT.indexOf(ch), 0);
+    // formatArcPrice writes "0." + literal 0 + subscript(zeros - 1) + sig
+    const zeros = digits + 1;
+    const parsed = Number(`0.${"0".repeat(zeros)}${sub[2] ?? ""}`);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  const n = Number(t);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function formatArcPrice(value: number): string {
   if (!Number.isFinite(value) || value === 0) return "—";
   if (value >= 1000) {

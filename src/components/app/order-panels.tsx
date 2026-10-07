@@ -1,11 +1,12 @@
 "use client";
 
-import { useOneInchSwap, type InchSwapPhase } from "@/hooks/use-one-inch-swap";
+import { useOneInchSwap } from "@/hooks/use-one-inch-swap";
+import { useArcSwap } from "@/hooks/use-arc-swap";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import type { ArcSwap } from "@/lib/arc-swaps";
-import { formatArcPrice, formatUsd } from "@/components/app/arc-market-table";
+import { formatArcPrice, formatUsd, unformatArcPrice } from "@/components/app/arc-market-table";
 import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------------------
@@ -296,28 +297,66 @@ export function OrderEntry({
   const typeBoxRef = useRef<HTMLDivElement | null>(null);
   const [qty, setQty] = useState("");
   const [pct, setPct] = useState(0);
-  const { marketSwap, placeLimitOrder, phase, reset, hasWallet } = useOneInchSwap();
+  const inch = useOneInchSwap();
+  const direct = useArcSwap();
+
+  /**
+   * Which execution path is live. 1inch needs an API key we cannot request from
+   * the browser, so the server reports whether one is configured; without it we
+   * fall back to calling the Arc contracts directly (that path is verified
+   * on-chain), and limit orders stay off — they need 1inch's orderbook to be
+   * discoverable by resolvers.
+   */
+  const [inchReady, setInchReady] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/swap/1inch/status")
+      .then((r) => r.json())
+      .then((d) => alive && setInchReady(!!d.keySet))
+      .catch(() => alive && setInchReady(false));
+    return () => { alive = false; };
+  }, []);
+
+  /** One shape for the status UI — the two hooks report the same phases. */
+  const phase = (inchReady === false ? direct.phase : inch.phase) as {
+    kind: string; hash?: `0x${string}`; orderHash?: string; amountOut?: string; message?: string;
+  };
+  const reset = () => { inch.reset(); direct.reset(); };
+  const hasWallet = inch.hasWallet || direct.hasWallet;
 
   const isMarketOrder = orderType === "market";
+  const limitNeedsKey = !isMarketOrder && inchReady !== true;
 
-  /** Market spends the sold side; a limit order offers the maker side for the
-   *  taking side. Both derive from the same price x qty math. */
+  /**
+   * Market spends the sold side; a limit order offers the maker side for the
+   * taking side. Both derive from the same price x qty math.
+   */
   const onSubmit = async () => {
     if (!tokenAddress || !pairAddress || !qty || !(Number(total) > 0)) return;
 
-    if (isMarketOrder) {
-      const amount = side === "buy" ? String(total) : qty;
-      await marketSwap({
+    if (!isMarketOrder) {
+      await inch.placeLimitOrder({
+        makerAsset: direction().tokenIn,   // what we offer
+        takerAsset: direction().tokenOut,  // what we want
+        makingAmount: side === "buy" ? String(total) : qty,
+        takingAmount: side === "buy" ? qty : String(total),
+      });
+      return;
+    }
+
+    const amount = side === "buy" ? String(total) : qty;
+    if (inchReady === true) {
+      await inch.marketSwap({
         tokenIn: direction().tokenIn,
         tokenOut: direction().tokenOut,
         amountIn: amount,
       });
     } else {
-      await placeLimitOrder({
-        makerAsset: direction().tokenIn,   // what we offer
-        takerAsset: direction().tokenOut,  // what we want
-        makingAmount: side === "buy" ? String(total) : qty,
-        takingAmount: side === "buy" ? qty : String(total),
+      await direct.swap({
+        pairAddress,
+        tokenIn: direction().tokenIn,
+        tokenOut: direction().tokenOut,
+        amountIn: amount,
       });
     }
   };
@@ -356,9 +395,12 @@ export function OrderEntry({
     if (next === "market") onBbo?.();
   };
 
-  // Plain arithmetic, not useMemo: memoizing two Number() calls made the React
+  // Plain arithmetic, not useMemo: memoizing two conversions made the React
   // Compiler skip the whole component, which costs more than it saves.
-  const total = (Number(price.replace(/,/g, "")) || 0) * (Number(qty) || 0);
+  // unformatArcPrice, not Number(): the field holds a display string like
+  // "0.0₃4064" for tiny tokens, which Number() reads as NaN — that used to keep
+  // Buy/Sell disabled forever on most Arc pairs.
+  const total = unformatArcPrice(price) * (Number(qty) || 0);
 
   /**
    * The button is ready as soon as the order is worth anything. The old $5
@@ -573,8 +615,9 @@ export function OrderEntry({
 
         <button
           type="button"
-          disabled={disabled || busy || !tokenAddress || !pairAddress}
+          disabled={disabled || busy || !tokenAddress || !pairAddress || limitNeedsKey}
           onClick={onSubmit}
+          title={limitNeedsKey ? "Limit orders need INCH_API_KEY (1inch orderbook)" : undefined}
           className={cn(
             "h-9 w-full rounded-md text-xs font-semibold disabled:opacity-60",
             side === "buy"
@@ -586,9 +629,17 @@ export function OrderEntry({
             ? busyLabel(phase)
             : isMarketOrder
               ? `${side === "buy" ? "Buy" : "Sell"} ${base}`
-              : "Place Limit Order"}
+              : limitNeedsKey
+                ? "Limit needs 1inch key"
+                : "Place Limit Order"}
         </button>
 
+        {limitNeedsKey ? (
+          <p className="text-center text-[10px] leading-snug text-muted-foreground">
+            Limit orders run on 1inch&apos;s orderbook — set <span className="font-mono">INCH_API_KEY</span> to enable them.
+            Market orders work now.
+          </p>
+        ) : null}
         {/* Swap status — the wallet flow is multi-step, so it is always visible. */}
         {phase.kind === "error" ? (
           <div className="flex items-start justify-between gap-2 rounded-lg bg-danger/10 px-2.5 py-2 text-[10px] text-danger">
@@ -603,10 +654,10 @@ export function OrderEntry({
             rel="noreferrer"
             className="block truncate rounded-lg bg-white/5 px-2.5 py-2 font-mono text-[10px] text-muted-foreground hover:text-foreground"
           >
-            {phase.kind === "awaiting-approval" ? "Approval sent" : "Swap sent"}: {phase.hash.slice(0, 18)}…
+            {phase.kind === "awaiting-approval" ? "Approval sent" : "Swap sent"}: {phase.hash?.slice(0, 18)}…
           </a>
         ) : null}
-        {phase.kind === "done" && phase.kind2 === "swap" && phase.hash ? (
+        {phase.kind === "done" && phase.hash ? (
           <a
             href={`https://explorer.arc.io/tx/${phase.hash}`}
             target="_blank"
@@ -616,7 +667,7 @@ export function OrderEntry({
             Swapped ✓ {phase.hash.slice(0, 18)}…{phase.amountOut ? ` (out ${phase.amountOut})` : ""}
           </a>
         ) : null}
-        {phase.kind === "done" && phase.kind2 === "order" && phase.orderHash ? (
+        {phase.kind === "done" && phase.orderHash ? (
           <p className="block truncate rounded-lg bg-success/10 px-2.5 py-2 text-[10px] text-success">
             Limit order live ✓ {phase.orderHash.slice(0, 18)}… — fills off-chain until matched
           </p>
@@ -632,7 +683,7 @@ export function OrderEntry({
   );
 }
 
-function busyLabel(phase: InchSwapPhase): string {
+function busyLabel(phase: { kind: string }): string {
   switch (phase.kind) {
     case "quoting": return "Getting quote…";
     case "approving": return "Approving…";
