@@ -55,6 +55,15 @@ function fmtPrice(v: number): string {
   return formatArcPrice(v);
 }
 
+/**
+ * A dust fill is not a free fill. "$0.00" on a 0.0004 USDC swap reads like the
+ * number failed to load, so anything below a cent says so explicitly.
+ */
+function fmtValue(v: number): string {
+  if (v > 0 && v < 0.01) return "<$0.01";
+  return formatUsd(v);
+}
+
 function fmtClock(ts: number) {
   const d = new Date(ts);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -137,8 +146,6 @@ export function RecentSwaps({
   // Window maths. A missing anchor (evicted from the buffer) falls back to newest.
   const found = anchor ? rows.findIndex((row) => row.id === anchor) : 0;
   const start = anchor && found >= 0 ? found : 0;
-  const page = Math.floor(start / PAGE_SIZE) + 1;
-  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const visible = rows.slice(start, start + PAGE_SIZE);
   const atNewest = start === 0;
   const atOldest = start + PAGE_SIZE >= rows.length;
@@ -174,14 +181,20 @@ export function RecentSwaps({
       <div className="relative z-10 flex w-full max-w-full flex-1 flex-col overflow-hidden">
         <div className="mb-1 flex shrink-0 items-center justify-between border-b border-white/[0.06] pb-2 text-[12px] text-muted-foreground">
           <span>Recent Swaps</span>
+          {/*
+            Live is the normal state, so it says nothing — just the pulsing dot.
+            The word only shows up when something is actually wrong (Syncing,
+            Offline), where it is worth the pixels.
+          */}
           <span
+            title={badge.label}
             className={cn(
               "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider",
               badge.tone,
             )}
           >
             <span className={cn("h-1.5 w-1.5 rounded-full", badge.dot, badge.pulse)} />
-            {badge.label}
+            {status === "live" ? null : badge.label}
           </span>
         </div>
 
@@ -227,7 +240,7 @@ export function RecentSwaps({
                   {fmtPrice(row.price)}
                 </span>
                 <span className="w-[60px] shrink-0 truncate text-right tabular-nums text-foreground/80">
-                  {formatUsd(row.valueUsd)}
+                  {fmtValue(row.valueUsd)}
                 </span>
                 <span className="w-[58px] shrink-0 text-right text-[10px] tabular-nums text-muted-foreground/60">
                   {fmtAge(row.at, now)}
@@ -250,14 +263,12 @@ export function RecentSwaps({
             Newer
           </button>
 
-          {/* One line only — the panel is 240px wide and the header already
-              carries the LIVE badge, so the range is all this needs to say. */}
-          <span className="min-w-0 flex-1 whitespace-nowrap text-center font-mono text-[10px] tabular-nums text-muted-foreground/70">
-            {rows.length === 0
-              ? "—"
-              : atNewest
-                ? `${start + 1}–${start + visible.length} / ${rows.length}`
-                : `${page}/${pageCount} · ${start + 1}–${start + visible.length}`}
+          {/*
+            Just the visible row range — no "live" word, no totals. Fixed width
+            and centre-anchored so paging never nudges the two buttons.
+          */}
+          <span className="w-[64px] shrink-0 whitespace-nowrap text-center font-mono text-[10px] tabular-nums text-muted-foreground/70">
+            {rows.length === 0 ? "—" : `${start + 1}-${start + visible.length}`}
           </span>
 
           <button
