@@ -1,6 +1,6 @@
 "use client";
 
-import { useArcSwap } from "@/hooks/use-arc-swap";
+import { useOneInchSwap } from "@/hooks/use-one-inch-swap";
 import { useArcBalances } from "@/hooks/use-arc-balances";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -307,7 +307,6 @@ export function OrderEntry({
   tokenAddress,
   pairAddress,
   quoteAddress = "0x3600000000000000000000000000000000000000",
-  createdAtMs,
 }: {
   base?: string;
   quote?: string;
@@ -321,8 +320,6 @@ export function OrderEntry({
   pairAddress?: string;
   /** Quote token contract; USDC on Arc by default. */
   quoteAddress?: string;
-  /** Token launch time (ms) — speeds up hooked-pool resolution server-side. */
-  createdAtMs?: number;
 }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   /** Market is the default: it is the order you can place without deciding a price. */
@@ -335,7 +332,11 @@ export function OrderEntry({
   /** Non-empty while the trader is typing in Total directly; cleared whenever a
    *  quantity is set elsewhere so the field falls back to the derived value. */
   const [totalText, setTotalText] = useState("");
-  const { swap, phase, reset, hasWallet } = useArcSwap();
+  /**
+   * Execution goes through 1inch's AggregationRouter (0xe08cab… on Arc) — the
+   * same contract the 1inch Terminal uses. One ERC-20 approve, one router tx.
+   */
+  const { marketSwap, phase, reset, hasWallet } = useOneInchSwap();
 
   /**
    * Market spends the sold side; a limit order offers the maker side for the
@@ -345,12 +346,10 @@ export function OrderEntry({
     if (!tokenAddress || !pairAddress || !qty || !(Number(total) > 0)) return;
 
     const amount = side === "buy" ? String(total) : qty;
-    await swap({
-      pairAddress,
+    await marketSwap({
       tokenIn: direction().tokenIn,
       tokenOut: direction().tokenOut,
       amountIn: amount,
-      createdAtMs,
     });
     // a fill moves both balances; the Avbl line should follow it
     refreshBalances();

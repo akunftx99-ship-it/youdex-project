@@ -203,7 +203,6 @@ function SpotTerminal() {
               onBbo={handleBbo}
               tokenAddress={token.address}
               pairAddress={token.pairAddress}
-              createdAtMs={token.createdAt ?? undefined}
             />
           </div>
 
