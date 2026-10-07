@@ -4,7 +4,7 @@ import { useOneInchSwap } from "@/hooks/use-one-inch-swap";
 import { useArcSwap } from "@/hooks/use-arc-swap";
 import { useArcBalances } from "@/hooks/use-arc-balances";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import type { ArcSwap } from "@/lib/arc-swaps";
 import { formatArcPrice, formatUsd, unformatArcPrice } from "@/components/app/arc-market-table";
@@ -222,34 +222,52 @@ function Stepper({
   unit?: string;
   onUnit?: () => void;
 }) {
+  const id = useId();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  /**
+   * 36px tall box, 13px tall input — clicking the label or the padding around
+   * the number hit nothing and the field felt dead ("cannot type in it"). Now
+   * the whole box is a click target: pointer events focus the input directly,
+   * the label is bound with htmlFor, and the input itself is tall enough to
+   * carry a real caret.
+   */
   return (
     <div className="flex min-w-0 flex-1 gap-1">
-      <div className="home-glass flex h-9 min-w-0 flex-1 items-center rounded-lg px-1">
+      <div
+        className="home-glass flex h-11 min-w-0 flex-1 cursor-text items-center rounded-lg px-1"
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest("button")) inputRef.current?.focus();
+        }}
+      >
         <button
           type="button"
           aria-label={`Decrease ${label}`}
           onClick={() => onChange(stepValue(value, -1))}
-          className="mr-0.5 grid h-6 w-4 shrink-0 place-items-center text-[10px] text-muted-foreground transition-transform active:scale-95"
+          className="mr-0.5 grid h-7 w-5 shrink-0 place-items-center text-[11px] text-muted-foreground transition-transform active:scale-95"
         >
           −
         </button>
-        <div className="min-w-0 flex-1 space-y-0.5 overflow-hidden px-0.5 text-center">
-          <p className="truncate text-[8px] leading-none text-muted-foreground">{label}</p>
-          <div className="flex h-[13px] items-center justify-center overflow-hidden">
-            <input
-              inputMode="decimal"
-              placeholder="0.00"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              className="w-full rounded bg-transparent text-center font-mono text-[10px] leading-none tabular-nums outline-none focus:bg-white/[0.06] focus:ring-1 focus:ring-primary/50"
-            />
-          </div>
+        <div className="min-w-0 flex-1 px-0.5 text-center">
+          <label htmlFor={id} className="block cursor-text truncate text-[8px] leading-tight text-muted-foreground">
+            {label}
+          </label>
+          <input
+            id={id}
+            ref={inputRef}
+            inputMode="decimal"
+            placeholder="0.00"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={(e) => e.currentTarget.select()}
+            className="h-6 w-full min-w-0 cursor-text rounded bg-transparent text-center font-mono text-[13px] leading-none tabular-nums outline-none focus:bg-white/[0.06] focus:ring-1 focus:ring-primary/50"
+          />
         </div>
         <button
           type="button"
           aria-label={`Increase ${label}`}
           onClick={() => onChange(stepValue(value, 1))}
-          className="ml-0.5 grid h-6 w-4 shrink-0 place-items-center text-[10px] text-muted-foreground transition-transform active:scale-95"
+          className="ml-0.5 grid h-7 w-5 shrink-0 place-items-center text-[11px] text-muted-foreground transition-transform active:scale-95"
         >
           +
         </button>
@@ -258,7 +276,7 @@ function Stepper({
         <button
           type="button"
           onClick={onUnit}
-          className="home-glass inline-flex h-9 w-[3.75rem] shrink-0 items-center justify-center gap-0.5 rounded-lg text-[10px] font-semibold"
+          className="home-glass inline-flex h-11 w-[3.75rem] shrink-0 items-center justify-center gap-0.5 rounded-lg text-[10px] font-semibold"
         >
           <span className="max-w-[2.25rem] truncate">{unit}</span>
           <ChevronDown className="h-3 w-3" />
@@ -558,7 +576,7 @@ export function OrderEntry({
         <div className="flex min-w-0 flex-1 gap-1">
           <div
             className={cn(
-              "home-glass flex h-9 min-w-0 flex-1 items-center rounded-lg px-1",
+              "home-glass flex h-11 min-w-0 flex-1 items-center rounded-lg px-1",
               isMarket && "opacity-70",
             )}
           >
@@ -571,11 +589,11 @@ export function OrderEntry({
             >
               −
             </button>
-            <div className="min-w-0 flex-1 space-y-0.5 overflow-hidden px-0.5 text-center">
-              <p className="truncate text-[8px] leading-none text-muted-foreground">
+            <div className="min-w-0 flex-1 px-0.5 text-center">
+              <p className="truncate text-[8px] leading-tight text-muted-foreground">
                 {isMarket ? `Market Price (${quote})` : `Price (${quote})`}
               </p>
-              <div className="flex h-[13px] items-center justify-center overflow-hidden">
+              <div className="flex h-6 items-center justify-center">
                 <input
                   inputMode="decimal"
                   placeholder="0.00"
@@ -583,7 +601,7 @@ export function OrderEntry({
                   readOnly={isMarket}
                   onChange={(e) => onPrice(e.target.value)}
                   aria-label={isMarket ? "Market price (read only)" : `Price (${quote})`}
-                  className="trading-num-input w-full bg-transparent text-center font-mono text-[10px] leading-none tabular-nums outline-none read-only:cursor-default"
+                  className="trading-num-input h-6 w-full bg-transparent text-center font-mono text-[13px] leading-none tabular-nums outline-none read-only:cursor-default"
                 />
               </div>
             </div>
