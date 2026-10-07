@@ -32,6 +32,8 @@ export type PortfolioItem = {
   decimals: number;
   priceUsd: number;
   valueUsd: number;
+  /** Real token logo (Peach feed → IPFS), or the catalog's, or null → gradient. */
+  image: string | null;
   /** Catalog entry when the token is one the app lists (drives the mark icon). */
   token: ArcToken | null;
 };
@@ -98,6 +100,7 @@ export async function readArcPortfolio(walletInput: string): Promise<ArcPortfoli
     const priceUsd = typeof live === "number" && Number.isFinite(live) && live > 0 ? live : (entry.token?.price ?? 0);
     if (priceUsd > 0) pricedCount++; else unpricedCount++;
     const balance = formatUnits(raw, dp);
+    const image = stats[entry.address.toLowerCase()]?.logo ?? entry.token?.image ?? null;
     if (entry.address.toLowerCase() === USDC.toLowerCase()) usdcBalance = balance;
     items.push({
       address: entry.address,
@@ -108,6 +111,7 @@ export async function readArcPortfolio(walletInput: string): Promise<ArcPortfoli
       decimals: dp,
       priceUsd,
       valueUsd: Number(balance) * priceUsd,
+      image,
       token: entry.token,
     });
   });

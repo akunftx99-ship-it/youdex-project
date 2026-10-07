@@ -22,6 +22,8 @@ export type ArcLiveStats = {
   liquidity: number;
   marketCap: number;
   txns24: { buys: number; sells: number };
+  /** Token logo the feed reports as visible, when it has one. */
+  logo: string | null;
 };
 
 const COINS = "https://api.peach.ag/arc/v1/arc/pro/v2/coins";
@@ -39,6 +41,8 @@ type RawCoin = {
   liqUsd?: string | number;
   mcap?: string | number;
   v24h?: string | number;
+  logoURI?: string;
+  logo_status?: string;
   states?: {
     tp?: string;
     /** Window price change as a fraction, e.g. 0.004077 = +0.41%. */
@@ -77,7 +81,8 @@ function toStats(raw: RawCoin): ArcLiveStats | null {
     }
   }
 
-  return { price, change, volume, liquidity: num(raw.liqUsd), marketCap: num(raw.mcap), txns24 };
+  const logo = typeof raw.logoURI === "string" && raw.logoURI.startsWith("http") && raw.logo_status !== "hidden" ? raw.logoURI : null;
+  return { price, change, volume, liquidity: num(raw.liqUsd), marketCap: num(raw.mcap), txns24, logo };
 }
 
 /** Live stats for the given addresses. Chunks that fail are simply absent. */

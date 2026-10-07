@@ -13,8 +13,7 @@ import {
 } from "lucide-react";
 import { useWallets } from "@privy-io/react-auth";
 import { AppShell } from "@/components/app/app-shell";
-import { ArcTokenMark } from "@/components/app/arc-market-table";
-import { ARC_HOT } from "@/lib/arc-data";
+import { TokenAvatar } from "@/components/app/token-avatar";
 import { formatPortfolioAmount, formatUsd } from "@/lib/arc-portfolio";
 import { useArcPortfolio } from "@/hooks/use-arc-portfolio";
 import { cn } from "@/lib/utils";
@@ -247,7 +246,7 @@ export default function FundPage() {
                       <tr key={item.address} className="border-b border-white/[0.04]">
                         <td className="py-3">
                           <div className="flex items-center gap-3">
-                            <ArcTokenMark token={item.token ?? ARC_HOT[0]} />
+                            <TokenAvatar symbol={item.symbol} address={item.address} image={item.image} size={32} />
                             <div>
                               <p className="font-semibold text-foreground">{item.symbol}</p>
                               <p className="text-[11px] text-muted-foreground">
