@@ -2,6 +2,7 @@
 
 import { useOneInchSwap } from "@/hooks/use-one-inch-swap";
 import { useArcSwap } from "@/hooks/use-arc-swap";
+import { OneInchTerminalCard } from "@/components/app/one-inch-widget";
 import { useArcBalances } from "@/hooks/use-arc-balances";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -333,6 +334,15 @@ export function OrderEntry({
   const [qty, setQty] = useState("");
   const [pct, setPct] = useState(0);
   const totalId = useId();
+  /**
+   * Which engine executes this pair. 32-byte pool ids are Uniswap v4 on Arc —
+   * Arc's UniversalRouter is a custom build that reverts direct swaps (proven
+   * with full allowances in place), so those default to the keyless 1inch
+   * widget; 20-byte pools are v3 and execute directly via SwapRouter02.
+   */
+  const isV4Pool = !!pairAddress && pairAddress.length === 66;
+  const [engine, setEngine] = useState<"auto" | "1inch" | "direct">("auto");
+  const mode = engine === "auto" ? (isV4Pool ? "1inch" : "direct") : engine;
   /** Non-empty while the trader is typing in Total directly; cleared whenever a
    *  quantity is set elsewhere so the field falls back to the derived value. */
   const [totalText, setTotalText] = useState("");
@@ -495,7 +505,41 @@ export function OrderEntry({
   return (
     <div className="home-glass flex w-[300px] shrink-0 flex-col rounded-2xl p-4 xl:w-[320px]">
       <div className="relative z-10 min-w-0 space-y-2.5">
-        {/* Buy / Sell segmented control */}
+        {/* Engine: 1inch widget (keyless, all pools) vs direct contracts (v3 only) */}
+        <div className="home-glass flex rounded-lg p-0.5">
+          {(["1inch", "direct"] as const).map((m) => {
+            const active = mode === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setEngine(m === "1inch" ? "1inch" : "direct")}
+                className={cn(
+                  "h-7 flex-1 rounded-md text-[10px] font-semibold capitalize transition-colors",
+                  active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+                title={
+                  m === "1inch"
+                    ? "1inch aggregate all Arc liquidity (recommended for v4 pools)"
+                    : "Direct contract execution (Uniswap v3 pools only — v4 is blocked on Arc's router)"
+                }
+              >
+                {m === "1inch" ? "1inch" : "Direct"}
+              </button>
+            );
+          })}
+        </div>
+
+        {mode === "1inch" ? (
+          <OneInchTerminalCard
+            baseAddress={tokenAddress}
+            baseSymbol={base || "?"}
+            quoteAddress={quoteAddress}
+            quoteSymbol={quote === "USDC" ? "USDC" : quote}
+          />
+        ) : (
+          <>
+            {/* Buy / Sell segmented control */}
         <div className="home-glass relative flex rounded-lg p-0.5">
           {(["buy", "sell"] as const).map((s) => {
             const active = side === s;
@@ -781,6 +825,8 @@ export function OrderEntry({
             Log in to enable on-chain swaps
           </p>
         ) : null}
+          </>
+        )}
       </div>
     </div>
   );
