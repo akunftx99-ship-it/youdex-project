@@ -3,7 +3,7 @@
 import { useOneInchSwap } from "@/hooks/use-one-inch-swap";
 import { useArcBalances } from "@/hooks/use-arc-balances";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import type { ArcSwap } from "@/lib/arc-swaps";
 import { formatArcPrice, formatUsd, unformatArcPrice } from "@/components/app/arc-market-table";
@@ -120,13 +120,6 @@ export function RecentSwaps({
     };
   }, [address]);
 
-  const { buys, sells } = useMemo(() => {
-    let b = 0;
-    for (const row of rows) if (row.side === "buy") b++;
-    return { buys: b, sells: rows.length - b };
-  }, [rows]);
-  const buyPct = rows.length ? Math.round((buys / rows.length) * 100) : 50;
-
   const badge =
     status === "live"
       ? { label: "Live", tone: "text-success", dot: "bg-success", pulse: "animate-pulse" }
@@ -189,16 +182,6 @@ export function RecentSwaps({
           )}
         </div>
 
-        <div className="mt-auto shrink-0 border-t border-white/[0.06] pt-2.5">
-          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
-            <span className="text-success">Buys {buys}</span>
-            <span className="text-danger">Sells {sells}</span>
-          </div>
-          <div className="mt-1.5 flex h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
-            <span className="bg-success/70" style={{ width: `${buyPct}%` }} />
-            <span className="bg-danger/70" style={{ width: `${100 - buyPct}%` }} />
-          </div>
-        </div>
       </div>
     </div>
   );
