@@ -33,7 +33,7 @@ export default function MarketsPage() {
   /** Each tab surfaces 50 ARC pairs. */
   const PAGE_SIZE = 50;
 
-  const { mergeAll, totals } = useArcLive();
+  const { mergeAll, totals, hasLive } = useArcLive();
 
   /**
    * The catalog fixes which pairs exist; the live feed decides their order and
@@ -138,7 +138,7 @@ export default function MarketsPage() {
           </div>
 
           {tokens.length ? (
-            <ArcMarketTable tokens={tokens} hotSymbols={hotSymbols} />
+            <ArcMarketTable tokens={tokens} hotSymbols={hotSymbols} live={hasLive} />
           ) : (
             <p className="py-10 text-center text-sm text-muted-foreground">
               No ARC pairs match “{query}”.

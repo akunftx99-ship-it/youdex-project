@@ -56,7 +56,7 @@ const SNAPSHOT_LIQUIDITY = ARC_TOTAL_LIQUIDITY;
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("hot");
   const [hidden, setHidden] = useState(false);
-  const { status, mergeAll, totals } = useArcLive();
+  const { status, mergeAll, totals, hasLive } = useArcLive();
 
   /** Real wallet balance — same on-chain read the Fund page uses. */
   const { wallets } = useWallets();
@@ -280,7 +280,7 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <ArcMarketTable tokens={rows} hotSymbols={board.hotSymbols} />
+          <ArcMarketTable tokens={rows} hotSymbols={board.hotSymbols} live={hasLive} />
         </section>
       </div>
     </AppShell>

@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -24,6 +27,7 @@ import { formatArcPrice } from "@/components/app/arc-market-table";
 import { TokenSearch } from "@/components/app/token-search";
 import { ConnectWalletButton } from "@/components/app/connect-wallet-button";
 import { ARC_HOT, ARC_TOP_VOLUME, type ArcToken } from "@/lib/arc-data";
+import { useArcLive } from "@/hooks/use-arc-live";
 import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------------------
@@ -156,34 +160,55 @@ export function NavLink({ item, active }: { item: NavItem; active?: boolean }) {
 /** Out-of-scope entries kept only as inert labels (never rendered in the sidebar). */
 export const OUT_OF_SCOPE_ICONS = { Target, ListTodo, BrainCircuit, Crown, Users, Send };
 
+/** Shimmer placeholder for a number that has not arrived from upstream yet. */
+function Pulse({ w, h = 11 }: { w: number; h?: number }) {
+  return (
+    <span
+      className="inline-block animate-pulse rounded bg-white/10"
+      style={{ width: w, height: h }}
+      aria-hidden="true"
+    />
+  );
+}
+
 function MiniTicker() {
   /**
    * Two hot ARC pairs — deliberately NOT the pair the header already shows, so
-   * the sidebar adds information instead of repeating the top bar.
+   * the sidebar adds information instead of repeating the top bar. Numbers come
+   * from the live feed; until it answers the rows show shimmer, never the
+   * catalog's frozen snapshot.
    */
+  const { mergeAll, hasLive } = useArcLive();
   const headerPair = ARC_TOP_VOLUME[0]?.pair;
-  const rows = ARC_HOT.filter((t) => t.pair !== headerPair).slice(0, 2).map((t) => ({
-    pair: t.pair,
-    price: formatArcPrice(t.price),
-    change: t.change.h24,
-  }));
+  const rows = useMemo(
+    () => mergeAll(ARC_HOT.filter((t) => t.pair !== headerPair)).slice(0, 2),
+    [mergeAll, headerPair],
+  );
   return (
     <div className="mx-1 space-y-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3">
       <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70">
         Market watch
       </p>
       {rows.map((row) => (
-        <div key={`${row.pair}-${row.price}`} className="flex items-center justify-between py-1">
+        <div key={row.pair} className="flex items-center justify-between gap-2 py-1">
           <span className="text-[11px] font-medium text-muted-foreground">{row.pair}</span>
-          <span className="font-mono text-[11px] font-semibold text-foreground">{row.price}</span>
+          <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+            {hasLive ? formatArcPrice(row.price) : <Pulse w={52} />}
+          </span>
           <span
             className={cn(
-              "font-mono text-[10px] font-semibold",
-              row.change >= 0 ? "text-success" : "text-danger",
+              "font-mono text-[10px] font-semibold tabular-nums",
+              !hasLive ? "opacity-0" : row.change.h24 >= 0 ? "text-success" : "text-danger",
             )}
           >
-            {row.change >= 0 ? "+" : ""}
-            {row.change.toFixed(2)}%
+            {hasLive ? (
+              <>
+                {row.change.h24 >= 0 ? "+" : ""}
+                {row.change.h24.toFixed(2)}%
+              </>
+            ) : (
+              <Pulse w={40} />
+            )}
           </span>
         </div>
       ))}
@@ -257,8 +282,10 @@ export function TopBar({
   /** ARC token shown in the header ticker; defaults to the top-volume pair. */
   ticker?: ArcToken;
 }) {
-  const livePrice = formatArcPrice(ticker.price);
-  const liveChange = ticker.change.h24;
+  // The header shows the pair's live quote — the catalog value is never painted.
+  const { liveFor, hasLive } = useArcLive();
+  const live = liveFor(ticker);
+  const showLive = hasLive && live !== null;
   return (
     <header className="fixed left-[240px] right-0 top-0 z-30 hidden h-[64px] shrink-0 items-center gap-4 border-b border-white/10 bg-[#090d14]/80 px-8 backdrop-blur-2xl lg:flex xl:left-[260px]">
       <div className="flex shrink-0 items-center gap-3">
@@ -267,15 +294,23 @@ export function TopBar({
         <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
           <span className="font-mono text-xs text-muted-foreground">{ticker.pair}</span>
-          <span className="font-mono text-xs font-semibold text-foreground">{livePrice}</span>
+          <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
+            {showLive ? formatArcPrice(live.price) : <Pulse w={54} />}
+          </span>
           <span
             className={cn(
-              "font-mono text-[11px] font-semibold",
-              liveChange >= 0 ? "text-success" : "text-danger",
+              "font-mono text-[11px] font-semibold tabular-nums",
+              !showLive ? "opacity-0" : live.change.h24 >= 0 ? "text-success" : "text-danger",
             )}
           >
-            {liveChange >= 0 ? "+" : ""}
-            {liveChange.toFixed(2)}%
+            {showLive ? (
+              <>
+                {live.change.h24 >= 0 ? "+" : ""}
+                {live.change.h24.toFixed(2)}%
+              </>
+            ) : (
+              <Pulse w={40} />
+            )}
           </span>
         </div>
       </div>

@@ -184,11 +184,23 @@ function CopyButton({ value }: { value: string }) {
    Table
 --------------------------------------------------------------------------- */
 
+/** Shimmer placeholder — shown wherever a live number has not arrived yet. */
+function Pulse({ w, h = 12 }: { w: number; h?: number }) {
+  return (
+    <span
+      className="inline-block animate-pulse rounded bg-white/10"
+      style={{ width: w, height: h }}
+      aria-hidden="true"
+    />
+  );
+}
+
 export function ArcMarketTable({
   tokens,
   showRank = true,
   hotSymbols,
   basePath = "/trade",
+  live = true,
 }: {
   tokens: ArcToken[];
   showRank?: boolean;
@@ -196,6 +208,12 @@ export function ArcMarketTable({
   hotSymbols?: string[];
   /** Route prefix for the Trade action. */
   basePath?: string;
+  /**
+   * False until /api/prices has answered. The catalog's frozen snapshot is
+   * identity only — its numbers are never painted, so the table cannot show
+   * "old price, then the real one".
+   */
+  live?: boolean;
 }) {
   const router = useRouter();
 
@@ -263,24 +281,26 @@ export function ArcMarketTable({
                 </td>
 
                 <td className="py-3 text-right font-mono text-sm tabular-nums text-foreground">
-                  {formatArcPrice(token.price)}
+                  {live ? formatArcPrice(token.price) : <Pulse w={62} />}
                 </td>
 
                 <td className="py-3 text-right">
-                  <ChangePill value={token.change.h24} />
+                  <div className="flex justify-end">
+                    {live ? <ChangePill value={token.change.h24} /> : <Pulse w={56} h={18} />}
+                  </div>
                 </td>
 
                 <td className="py-3 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                  {formatUsd(token.volume.h24)}
+                  {live ? <>{formatUsd(token.volume.h24)}</> : <Pulse w={52} />}
                 </td>
 
                 <td className="py-3 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                  {formatUsd(token.marketCap > 0 ? token.marketCap : token.fdv)}
+                  {live ? <>{formatUsd(token.marketCap > 0 ? token.marketCap : token.fdv)}</> : <Pulse w={52} />}
                 </td>
 
                 <td className="py-3">
                   <div className="flex justify-center">
-                    <ArcSparkline token={token} />
+                    {live ? <ArcSparkline token={token} /> : <span className="block h-6 w-[76px] animate-pulse rounded bg-white/10" />}
                   </div>
                 </td>
 
