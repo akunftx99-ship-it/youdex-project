@@ -113,6 +113,35 @@ export const V3_QUOTER_V2_ABI = [
   },
 ] as const;
 
+/** Permit2 — the allowance layer UniversalRouter spends through. A v4 swap
+ *  needs two approvals: the ERC-20 one to Permit2, and Permit2's own allowance
+ *  for the router. Miss the second and the swap reverts after the first is paid. */
+export const PERMIT2_ABI = [
+  {
+    type: "function", name: "approve", stateMutability: "nonpayable",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint160" },
+      { name: "expiration", type: "uint48" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function", name: "allowance", stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "token", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [
+      { name: "amount", type: "uint160" },
+      { name: "expiration", type: "uint48" },
+      { name: "nonce", type: "uint48" },
+    ],
+  },
+] as const;
+
 export const V3_POOL_ABI = [
   { type: "function", name: "factory", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "fee", stateMutability: "view", inputs: [], outputs: [{ type: "uint24" }] },

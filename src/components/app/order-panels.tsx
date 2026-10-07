@@ -308,6 +308,7 @@ export function OrderEntry({
   tokenAddress,
   pairAddress,
   quoteAddress = "0x3600000000000000000000000000000000000000",
+  createdAtMs,
 }: {
   base?: string;
   quote?: string;
@@ -321,6 +322,8 @@ export function OrderEntry({
   pairAddress?: string;
   /** Quote token contract; USDC on Arc by default. */
   quoteAddress?: string;
+  /** Token launch time (ms) — speeds up hooked-pool resolution server-side. */
+  createdAtMs?: number;
 }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   /** Market is the default: it is the order you can place without deciding a price. */
@@ -393,6 +396,7 @@ export function OrderEntry({
         tokenIn: direction().tokenIn,
         tokenOut: direction().tokenOut,
         amountIn: amount,
+        createdAtMs,
       });
     }
     // a fill moves both balances; the Avbl line should follow it

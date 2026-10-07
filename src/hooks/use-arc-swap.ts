@@ -18,7 +18,7 @@
 import { useCallback, useState } from "react";
 import { useWallets } from "@privy-io/react-auth";
 import { createWalletClient, custom, parseUnits, type Address, type Hex } from "viem";
-import { arc } from "@/lib/arc-chain";
+import { arc, PERMIT2_ABI, UNISWAP_ARC } from "@/lib/arc-chain";
 
 export type SwapPhase =
   | { kind: "idle" }
@@ -57,6 +57,9 @@ export function useArcSwap() {
       tokenOut: Address;
       amountIn: string;
       slippageBps?: number;
+      /** Token creation time (ms): lets the server pinpoint a hooked v4 pool's
+       *  Initialize event instead of sweeping the chain for it. */
+      createdAtMs?: number;
     }): Promise<{ ok: boolean; hash?: Hex; error?: string }> => {
       if (!embedded) {
         const message = "No wallet connected — log in to trade.";
@@ -92,6 +95,7 @@ export function useArcSwap() {
             tokenOut: args.tokenOut,
             amountIn: args.amountIn,
             slippageBps: args.slippageBps ?? 100,
+            createdAtMs: args.createdAtMs,
           }),
         });
         const q = (await quoteRes.json()) as QuoteResponse & { error?: string; detail?: string };
@@ -120,6 +124,42 @@ export function useArcSwap() {
           await arcClient().waitForTransactionReceipt({ hash: approveHash, timeout: 90_000 });
         }
 
+        /**
+         * v4 spends through Permit2, which is a second, separate allowance:
+         * the ERC-20 approval above only lets Permit2 move the token, and
+         * Permit2 must then be allowed to let the router spend it. Skipping this
+         * reverts every v4 swap after the first approval has already been paid for.
+         */
+        if (q.venue === "uniswap-v4") {
+          const client = arcClient();
+          const router = (q.tx?.to ?? UNISWAP_ARC.universalRouter) as Address;
+          const [permitAmount, expiration] = await client.readContract({
+            address: UNISWAP_ARC.permit2 as Address,
+            abi: PERMIT2_ABI,
+            functionName: "allowance",
+            args: [embedded.address as Address, args.tokenIn, router],
+          });
+          const expiring = Number(expiration) < Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7;
+          if (BigInt(permitAmount) < amountIn || expiring) {
+            setPhase({ kind: "approving", spender: UNISWAP_ARC.permit2 as Address });
+            const permitHash = await walletClient.writeContract({
+              account: embedded.address as Address,
+              chain: arc,
+              address: UNISWAP_ARC.permit2 as Address,
+              abi: PERMIT2_ABI,
+              functionName: "approve",
+              args: [
+                args.tokenIn,
+                router,
+                amountIn, // uint160 — the ERC-20 amount fits
+                Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
+              ],
+            });
+            setPhase({ kind: "awaiting-approval", hash: permitHash });
+            await client.waitForTransactionReceipt({ hash: permitHash, timeout: 90_000 });
+          }
+        }
+
         // 3) re-quote with the recipient so minAmountOut is enforced on-chain
         const swapRes = await fetch("/api/swap/quote", {
           method: "POST",
@@ -130,6 +170,7 @@ export function useArcSwap() {
             tokenOut: args.tokenOut,
             amountIn: args.amountIn,
             slippageBps: args.slippageBps ?? 100,
+            createdAtMs: args.createdAtMs,
             recipient: embedded.address,
           }),
         });

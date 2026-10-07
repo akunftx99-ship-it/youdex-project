@@ -13,11 +13,15 @@
  */
 import {
   createPublicClient,
+  decodeEventLog,
   encodeAbiParameters,
   encodeFunctionData,
   http,
   keccak256,
+  parseAbiItem,
   parseAbiParameters,
+  toEventSelector,
+  toHex,
   type Address,
   type Hex,
   type PublicClient,
@@ -123,8 +127,102 @@ export function buildV3Swap(args: {
 
 /* ------------------------------------------------------------------ v4 ---- */
 
+/**
+ * Recover a v4 PoolKey by reading the PoolManager's own Initialize event.
+ *
+ * Hashing candidates (recoverPoolKey below) only works for hookless pools with
+ * a known fee/tickSpacing. Pools created by launchpads carry a custom hook, and
+ * the hook address cannot be brute-forced — so we ask the chain instead: the
+ * PoolManager publishes the full PoolKey when a pool is initialized.
+ *
+ * Arc's RPC caps eth_getLogs at ~2000 blocks and does not filter indexed topics
+ * reliably, so this walks windows around an estimated block and validates both
+ * topics client-side. Results are cached; a pool's key never changes.
+ */
+const INITIALIZE_EVENT = parseAbiItem(
+  "event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)",
+);
+const INITIALIZE_TOPIC = toEventSelector(INITIALIZE_EVENT).toLowerCase() as Hex;
+const LOG_WINDOW = 1900n;
+const POOL_MANAGER = UNISWAP_ARC.v4PoolManager as Address;
+const keyCache = new Map<string, PoolKey>();
+
+export async function findPoolKeyFromLogs(args: {
+  poolId: Hex;
+  /** Token creation time (ms) from the catalog — turns the search into a
+   *  pinpoint instead of a sweep. */
+  createdAtMs?: number;
+  /** Blocks to search either side of the estimate (default ±40k ≈ ±5.6h). */
+  windowBlocks?: bigint;
+}): Promise<PoolKey | null> {
+  const id = args.poolId.toLowerCase();
+  const cached = keyCache.get(id);
+  if (cached) return cached;
+
+  const client = arcClient();
+  const head = await client.getBlock({ blockNumber: await client.getBlockNumber() });
+
+  const lookback = 50_000n;
+  const prev = await client.getBlock({ blockNumber: head.number - lookback });
+  const blockTime = Number(head.timestamp - prev.timestamp) / Number(lookback) || 0.5;
+
+  const estimate = args.createdAtMs
+    ? head.number - BigInt(Math.max(0, Math.round((Number(head.timestamp) - args.createdAtMs / 1000) / blockTime)))
+    : head.number;
+  const window = args.windowBlocks ?? 40_000n;
+  const from = estimate > window ? estimate - window : 0n;
+  const to = estimate + window < head.number ? estimate + window : head.number;
+
+  for (let lo = from; lo <= to; lo += LOG_WINDOW) {
+    const hi = lo + LOG_WINDOW - 1n;
+    // Raw eth_getLogs rather than the typed helper: the RPC caps the range at
+    // ~2000 blocks and only honours the first topic, so the params are passed
+    // through verbatim and every log is re-validated before it is trusted.
+    const logs = (await client
+      .request({
+        method: "eth_getLogs",
+        params: [{ address: POOL_MANAGER, topics: [INITIALIZE_TOPIC], fromBlock: toHex(lo), toBlock: toHex(hi) }],
+      })
+      .catch(() => [])) as Array<{ topics: Hex[]; data: Hex }>;
+    for (const log of logs) {
+      // the RPC's topic filtering is advisory; the id has to match here
+      if (log.topics[1]?.toLowerCase() !== id) continue;
+      const decoded = decodeEventLog({ abi: [INITIALIZE_EVENT], data: log.data, topics: log.topics as [Hex, ...Hex[]] });
+      const a = decoded.args as {
+        currency0: Address; currency1: Address; fee: number; tickSpacing: number; hooks: Address;
+      };
+      const key: PoolKey = {
+        currency0: a.currency0,
+        currency1: a.currency1,
+        fee: Number(a.fee),
+        tickSpacing: Number(a.tickSpacing),
+        hooks: a.hooks,
+      };
+      keyCache.set(id, key);
+      return key;
+    }
+  }
+  return null;
+}
+
+
+
 const TICK_SPACINGS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 50, 60, 100, 200, 500, 1000, 2000] as const;
-const HISTORICAL_FEES = [1, 50, 100, 200, 250, 300, 400, 500, 1000, 2000, 2500, 3000, 4000, 5000, 10000, 15000, 20000, 30000, 50000, 100000] as const;
+/**
+ * v4 lets a pool set any fee (in hundredths of a bip, 1_000_000 = 100%), so no
+ * list is ever complete — launchpads mint odd tiers like 200000 (20%) or 11750.
+ * These are the values seen on Arc plus the conventional Uniswap tiers; anything
+ * outside falls through to the Initialize-log lookup, which is exact.
+ */
+const HISTORICAL_FEES = [
+  // conventional Uniswap tiers
+  1, 100, 500, 3000, 10000,
+  // tiers seen on Arc pools (Aero-style, launchpads, high-fee long tails)
+  50, 150, 200, 250, 300, 320, 400, 750, 800, 1000, 1500, 2000, 2500, 3500, 4000, 5000,
+  6000, 7000, 8000, 9000, 11750, 12000, 15000, 17500, 20000, 25000, 30000, 40000,
+  50000, 60000, 70000, 75000, 79283, 80000, 90000, 100000, 117500, 125000, 150000,
+  175000, 200000, 250000, 300000, 400000, 500000, 750000, 1000000,
+] as const;
 
 export function poolKeyId(key: PoolKey): Hex {
   return keccak256(
@@ -213,15 +311,25 @@ export function buildV4Swap(args: {
   const tokenIn = zeroForOne ? poolKey.currency0 : poolKey.currency1;
   const tokenOut = zeroForOne ? poolKey.currency1 : poolKey.currency0;
 
+  /**
+   * The swap action's params are decoded as `abi.decode(bytes, (ExactInputSingleParams))`
+   * — v4-periphery's CalldataDecoder does `params.offset + calldataload(params.offset)`
+   * — so the blob must carry a leading offset word like any dynamic struct. Encoding
+   * the five members flat (no wrap) produces 10 words instead of 11 and the router
+   * reverts with SliceOutOfBounds (0x3b99b53d) before reading a single field.
+   *
+   * SETTLE_ALL / TAKE_ALL are the opposite: they decode as (Currency, uint256)
+   * straight off the head, so those stay flat.
+   */
   const swapParams = encodeAbiParameters(
-    parseAbiParameters("(address,address,uint24,int24,address), bool, uint128, uint128, bytes"),
-    [
+    parseAbiParameters("((address,address,uint24,int24,address), bool, uint128, uint128, bytes)"),
+    [[
       [poolKey.currency0, poolKey.currency1, poolKey.fee, poolKey.tickSpacing, poolKey.hooks],
       zeroForOne,
       amountIn,
       minAmountOut,
       "0x",
-    ],
+    ]],
   );
   const settleParams = encodeAbiParameters(parseAbiParameters("address, uint256"), [tokenIn, amountIn]);
   const takeParams = encodeAbiParameters(parseAbiParameters("address, uint256"), [tokenOut, minAmountOut]);

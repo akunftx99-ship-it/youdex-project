@@ -21,6 +21,7 @@ import {
   applySlippage,
   buildV3Swap,
   buildV4Swap,
+  findPoolKeyFromLogs,
   quoteV3,
   quoteV4,
   readDecimals,
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
   const tokenOut = String(body.tokenOut ?? "");
   const amountInStr = String(body.amountIn ?? "");
   const slippageBps = Number(body.slippageBps ?? 100);
+  const createdAtMs = typeof body.createdAtMs === "number" ? body.createdAtMs : undefined;
   const recipient = body.recipient ? String(body.recipient) : undefined;
 
   if (!ADDR.test(tokenIn) || !ADDR.test(tokenOut)) {
@@ -94,15 +96,23 @@ export async function POST(req: Request) {
     }
 
     if (venue.venue === "uniswap-v4") {
-      const poolKey = recoverPoolKey({
+      // Two ways in. Hashing the candidates covers ordinary pools instantly;
+      // hooked pools (launchpads attach a hook) can only be resolved by reading
+      // the PoolKey the PoolManager published when the pool was initialized.
+      let poolKey = recoverPoolKey({
         poolId: pairAddress as Hex,
         tokenA: tokenIn as Address,
         tokenB: tokenOut as Address,
       });
+      let keySource = "hash";
+      if (!poolKey) {
+        poolKey = await findPoolKeyFromLogs({ poolId: pairAddress as Hex, createdAtMs });
+        keySource = "logs";
+      }
       if (!poolKey) {
         return jsonWithBigInt({
           error: "v4 pool key not recoverable",
-          detail: "The pool id did not match any known fee/tickSpacing/no-hook combination — it likely uses a custom hook. Ask for the PoolKey.",
+          detail: "Neither the fee/tickSpacing candidates nor the PoolManager's Initialize event yielded this pool's key, so it may not be a Uniswap v4 pool at all.",
           poolId: pairAddress,
         }, { status: 422 });
       }
@@ -110,7 +120,7 @@ export async function POST(req: Request) {
       const { amountOut, gasEstimate } = await quoteV4({ poolKey, zeroForOne, amountIn });
       const minAmountOut = applySlippage(amountOut, slippageBps);
       const res: Record<string, unknown> = {
-        venue: venue.venue, venueLabel: venue.label,
+        venue: venue.venue, venueLabel: venue.label, keySource,
         poolKey: { ...poolKey, fee: poolKey.fee, tickSpacing: poolKey.tickSpacing },
         zeroForOne,
         tokenIn, tokenOut, decimalsIn, amountIn: amountIn.toString(),
