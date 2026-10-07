@@ -224,6 +224,14 @@ export function TradingChart({ token, interval }: { token: ArcToken; interval: C
           labelBackgroundColor: "#1c2129",
         },
       },
+      /**
+       * Axis labels keep the compact subscript glyphs ("0.0₅5113") the rest of
+       * the app uses. This only reads correctly BECAUSE the candle series now
+       * carries an adaptive priceFormat: the scale's ticks are spaced far
+       * enough apart that no two labels collapse into the same string (they
+       * did before, which is why the axis looked empty on micro-priced pairs).
+       */
+      localization: { priceFormatter: (p: number) => formatArcPrice(p) },
     });
 
     /**
