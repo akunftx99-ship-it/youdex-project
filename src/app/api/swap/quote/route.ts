@@ -85,6 +85,7 @@ export async function POST(req: Request) {
         gasEstimate: gasEstimate.toString(), slippageBps,
         spender: UNISWAP_ARC.v3SwapRouter02,
         approvalRequired: true,
+        executable: true,
       };
       if (recipient) {
         res.tx = buildV3Swap({
@@ -129,6 +130,14 @@ export async function POST(req: Request) {
         spender: UNISWAP_ARC.permit2,
         approvalRequired: true,
         note: "Input is pulled through Permit2 — approve Permit2 on tokenIn first.",
+        /**
+         * Verified live: Arc's UniversalRouter (both deployments) rejects every
+         * standard command (v3 AND v4, hookless AND hooked) with allowances and
+         * balances in place, while SwapRouter02 executes v3 fine. It is a custom
+         * router build — direct v4 execution on Arc is not supported.
+         */
+        executable: false,
+        executionNote: "This pool is Uniswap v4. Arc's UniversalRouter is a custom build that rejects direct swaps — use the 1inch path (INCH_API_KEY) or Arc's own DEX UI for v4 pools.",
       };
       if (recipient) {
         res.tx = buildV4Swap({

@@ -39,6 +39,8 @@ type QuoteResponse = {
   amountOut: string;
   minAmountOut: string;
   spender: Address;
+  executable?: boolean;
+  executionNote?: string;
   poolKey?: { currency0: Address; currency1: Address; fee: number; tickSpacing: number; hooks: Address };
   zeroForOne?: boolean;
   tx?: { to: Address; data: Hex; value: string | number | bigint };
@@ -101,6 +103,12 @@ export function useArcSwap() {
         const q = (await quoteRes.json()) as QuoteResponse & { error?: string; detail?: string };
         if (!quoteRes.ok) {
           const message = q.detail ? `${q.error}: ${q.detail}` : (q.error ?? "quote failed");
+          setPhase({ kind: "error", message });
+          return { ok: false, error: message };
+        }
+
+        if (q.executable === false) {
+          const message = q.executionNote ?? "This pool cannot be swapped directly on Arc.";
           setPhase({ kind: "error", message });
           return { ok: false, error: message };
         }
@@ -193,7 +201,7 @@ export function useArcSwap() {
 
         const receipt = await arcClient().waitForTransactionReceipt({ hash: swapHash, timeout: 120_000 });
         if (receipt.status !== "success") {
-          const message = "The swap reverted on-chain. Nothing was swapped (only gas was spent).";
+          const message = `The swap reverted on-chain (tx ${swapHash}). Nothing was swapped - only gas was spent. Check the tx on the explorer to see why.`;
           setPhase({ kind: "error", message });
           return { ok: false, hash: swapHash, error: message };
         }
