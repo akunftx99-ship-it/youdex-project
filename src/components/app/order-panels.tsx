@@ -191,41 +191,6 @@ export function RecentSwaps({
           <span className="w-[58px] shrink-0 text-right">Age</span>
         </div>
 
-        {/* Pager — walks the buffered history 25 fills at a time. */}
-        <div className="flex shrink-0 items-center justify-between gap-2 pb-1.5 text-[10px]">
-          <button
-            type="button"
-            onClick={goNewer}
-            disabled={atNewest}
-            title="Newer fills"
-            className="inline-flex items-center gap-1 rounded-md border border-white/10 px-1.5 py-0.5 font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-muted-foreground"
-          >
-            <ChevronLeft className="h-3 w-3" />
-            Newer
-          </button>
-
-          <span className="flex items-center gap-1.5 font-mono tabular-nums text-muted-foreground/70">
-            {rows.length > 0 ? `${start + 1}–${start + visible.length} / ${rows.length}` : "—"}
-            <span className="text-muted-foreground/40">·</span>
-            {atNewest ? (
-              <span className="text-success">live</span>
-            ) : (
-              <span>{page}/{pageCount}</span>
-            )}
-          </span>
-
-          <button
-            type="button"
-            onClick={goOlder}
-            disabled={atOldest}
-            title="Earlier fills"
-            className="inline-flex items-center gap-1 rounded-md border border-white/10 px-1.5 py-0.5 font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-muted-foreground"
-          >
-            Older
-            <ChevronRight className="h-3 w-3" />
-          </button>
-        </div>
-
         {newSincePinned ? (
           <button
             type="button"
@@ -270,6 +235,41 @@ export function RecentSwaps({
               </div>
             ))
           )}
+        </div>
+
+        {/* Pager — walks the buffered history 25 fills at a time. */}
+        <div className="flex shrink-0 items-center justify-between gap-2 pt-2.5 text-[10px]">
+          <button
+            type="button"
+            onClick={goNewer}
+            disabled={atNewest}
+            title="Newer fills"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-white/10 px-1.5 py-0.5 font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-muted-foreground"
+          >
+            <ChevronLeft className="h-3 w-3" />
+            Newer
+          </button>
+
+          {/* One line only — the panel is 240px wide and the header already
+              carries the LIVE badge, so the range is all this needs to say. */}
+          <span className="min-w-0 flex-1 whitespace-nowrap text-center font-mono text-[10px] tabular-nums text-muted-foreground/70">
+            {rows.length === 0
+              ? "—"
+              : atNewest
+                ? `${start + 1}–${start + visible.length} / ${rows.length}`
+                : `${page}/${pageCount} · ${start + 1}–${start + visible.length}`}
+          </span>
+
+          <button
+            type="button"
+            onClick={goOlder}
+            disabled={atOldest}
+            title="Earlier fills"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-white/10 px-1.5 py-0.5 font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-muted-foreground"
+          >
+            Older
+            <ChevronRight className="h-3 w-3" />
+          </button>
         </div>
 
       </div>
