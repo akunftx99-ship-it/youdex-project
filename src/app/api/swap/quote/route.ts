@@ -137,7 +137,7 @@ export async function POST(req: Request) {
          * router build — direct v4 execution on Arc is not supported.
          */
         executable: false,
-        executionNote: "This pool is Uniswap v4. Arc's UniversalRouter is a custom build that rejects direct swaps — use the 1inch path (INCH_API_KEY) or Arc's own DEX UI for v4 pools.",
+        executionNote: "This pool is Uniswap v4. Arc's UniversalRouter is a custom build that rejects direct swaps, so this pair can't be executed in-app — trade it on an Arc-native DEX UI (e.g. Peach) instead.",
       };
       if (recipient) {
         res.tx = buildV4Swap({

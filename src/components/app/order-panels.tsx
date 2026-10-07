@@ -1,8 +1,6 @@
 "use client";
 
-import { useOneInchSwap } from "@/hooks/use-one-inch-swap";
 import { useArcSwap } from "@/hooks/use-arc-swap";
-import { OneInchTerminalCard } from "@/components/app/one-inch-widget";
 import { useArcBalances } from "@/hooks/use-arc-balances";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -334,47 +332,10 @@ export function OrderEntry({
   const [qty, setQty] = useState("");
   const [pct, setPct] = useState(0);
   const totalId = useId();
-  /**
-   * Which engine executes this pair. 32-byte pool ids are Uniswap v4 on Arc —
-   * Arc's UniversalRouter is a custom build that reverts direct swaps (proven
-   * with full allowances in place), so those default to the keyless 1inch
-   * widget; 20-byte pools are v3 and execute directly via SwapRouter02.
-   */
-  const isV4Pool = !!pairAddress && pairAddress.length === 66;
-  const [engine, setEngine] = useState<"auto" | "1inch" | "direct">("auto");
-  const mode = engine === "auto" ? (isV4Pool ? "1inch" : "direct") : engine;
   /** Non-empty while the trader is typing in Total directly; cleared whenever a
    *  quantity is set elsewhere so the field falls back to the derived value. */
   const [totalText, setTotalText] = useState("");
-  const inch = useOneInchSwap();
-  const direct = useArcSwap();
-
-  /**
-   * Which execution path is live. 1inch needs an API key we cannot request from
-   * the browser, so the server reports whether one is configured; without it we
-   * fall back to calling the Arc contracts directly (that path is verified
-   * on-chain), and limit orders stay off — they need 1inch's orderbook to be
-   * discoverable by resolvers.
-   */
-  const [inchReady, setInchReady] = useState<boolean | null>(null);
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/swap/1inch/status")
-      .then((r) => r.json())
-      .then((d) => alive && setInchReady(!!d.keySet))
-      .catch(() => alive && setInchReady(false));
-    return () => { alive = false; };
-  }, []);
-
-  /** One shape for the status UI — the two hooks report the same phases. */
-  const phase = (inchReady === false ? direct.phase : inch.phase) as {
-    kind: string; hash?: `0x${string}`; orderHash?: string; amountOut?: string; message?: string;
-  };
-  const reset = () => { inch.reset(); direct.reset(); };
-  const hasWallet = inch.hasWallet || direct.hasWallet;
-
-  const isMarketOrder = orderType === "market";
-  const limitNeedsKey = !isMarketOrder && inchReady !== true;
+  const { swap, phase, reset, hasWallet } = useArcSwap();
 
   /**
    * Market spends the sold side; a limit order offers the maker side for the
@@ -383,32 +344,14 @@ export function OrderEntry({
   const onSubmit = async () => {
     if (!tokenAddress || !pairAddress || !qty || !(Number(total) > 0)) return;
 
-    if (!isMarketOrder) {
-      await inch.placeLimitOrder({
-        makerAsset: direction().tokenIn,   // what we offer
-        takerAsset: direction().tokenOut,  // what we want
-        makingAmount: side === "buy" ? String(total) : qty,
-        takingAmount: side === "buy" ? qty : String(total),
-      });
-      return;
-    }
-
     const amount = side === "buy" ? String(total) : qty;
-    if (inchReady === true) {
-      await inch.marketSwap({
-        tokenIn: direction().tokenIn,
-        tokenOut: direction().tokenOut,
-        amountIn: amount,
-      });
-    } else {
-      await direct.swap({
-        pairAddress,
-        tokenIn: direction().tokenIn,
-        tokenOut: direction().tokenOut,
-        amountIn: amount,
-        createdAtMs,
-      });
-    }
+    await swap({
+      pairAddress,
+      tokenIn: direction().tokenIn,
+      tokenOut: direction().tokenOut,
+      amountIn: amount,
+      createdAtMs,
+    });
     // a fill moves both balances; the Avbl line should follow it
     refreshBalances();
   };
@@ -419,7 +362,7 @@ export function OrderEntry({
       ? { tokenIn: quoteAddress as `0x${string}`, tokenOut: tokenAddress as `0x${string}` }
       : { tokenIn: tokenAddress as `0x${string}`, tokenOut: quoteAddress as `0x${string}` };
 
-  const busy = ["quoting", "approving", "awaiting-approval", "swapping", "pending", "signing", "placing-order"]
+  const busy = ["quoting", "approving", "awaiting-approval", "swapping", "pending"]
     .includes(phase.kind);
 
   /** Real wallet balances — the Avbl line and the percent buttons size against
@@ -505,41 +448,7 @@ export function OrderEntry({
   return (
     <div className="home-glass flex w-[300px] shrink-0 flex-col rounded-2xl p-4 xl:w-[320px]">
       <div className="relative z-10 min-w-0 space-y-2.5">
-        {/* Engine: 1inch widget (keyless, all pools) vs direct contracts (v3 only) */}
-        <div className="home-glass flex rounded-lg p-0.5">
-          {(["1inch", "direct"] as const).map((m) => {
-            const active = mode === m;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setEngine(m === "1inch" ? "1inch" : "direct")}
-                className={cn(
-                  "h-7 flex-1 rounded-md text-[10px] font-semibold capitalize transition-colors",
-                  active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-                )}
-                title={
-                  m === "1inch"
-                    ? "1inch aggregate all Arc liquidity (recommended for v4 pools)"
-                    : "Direct contract execution (Uniswap v3 pools only — v4 is blocked on Arc's router)"
-                }
-              >
-                {m === "1inch" ? "1inch" : "Direct"}
-              </button>
-            );
-          })}
-        </div>
-
-        {mode === "1inch" ? (
-          <OneInchTerminalCard
-            baseAddress={tokenAddress}
-            baseSymbol={base || "?"}
-            quoteAddress={quoteAddress}
-            quoteSymbol={quote === "USDC" ? "USDC" : quote}
-          />
-        ) : (
-          <>
-            {/* Buy / Sell segmented control */}
+        {/* Buy / Sell segmented control */}
         <div className="home-glass relative flex rounded-lg p-0.5">
           {(["buy", "sell"] as const).map((s) => {
             const active = side === s;
@@ -762,9 +671,8 @@ export function OrderEntry({
 
         <button
           type="button"
-          disabled={disabled || busy || !tokenAddress || !pairAddress || limitNeedsKey}
+          disabled={disabled || busy || !tokenAddress || !pairAddress}
           onClick={onSubmit}
-          title={limitNeedsKey ? "Limit orders need INCH_API_KEY (1inch orderbook)" : undefined}
           className={cn(
             "h-9 w-full rounded-md text-xs font-semibold disabled:opacity-60",
             side === "buy"
@@ -772,21 +680,9 @@ export function OrderEntry({
               : "bg-danger text-danger-foreground",
           )}
         >
-          {busy
-            ? busyLabel(phase)
-            : isMarketOrder
-              ? `${side === "buy" ? "Buy" : "Sell"} ${base}`
-              : limitNeedsKey
-                ? "Limit needs 1inch key"
-                : "Place Limit Order"}
+          {busy ? busyLabel(phase) : `${side === "buy" ? "Buy" : "Sell"} ${base}`}
         </button>
 
-        {limitNeedsKey ? (
-          <p className="text-center text-[10px] leading-snug text-muted-foreground">
-            Limit orders run on 1inch&apos;s orderbook — set <span className="font-mono">INCH_API_KEY</span> to enable them.
-            Market orders work now.
-          </p>
-        ) : null}
         {/* Swap status — the wallet flow is multi-step, so it is always visible. */}
         {phase.kind === "error" ? (
           <div className="flex items-start justify-between gap-2 rounded-lg bg-danger/10 px-2.5 py-2 text-[10px] text-danger">
@@ -814,19 +710,12 @@ export function OrderEntry({
             Swapped ✓ {phase.hash.slice(0, 18)}…{phase.amountOut ? ` (out ${phase.amountOut})` : ""}
           </a>
         ) : null}
-        {phase.kind === "done" && phase.orderHash ? (
-          <p className="block truncate rounded-lg bg-success/10 px-2.5 py-2 text-[10px] text-success">
-            Limit order live ✓ {phase.orderHash.slice(0, 18)}… — fills off-chain until matched
-          </p>
-        ) : null}
         {/* No wallet yet is a normal state, not an error — say so up front. */}
         {!hasWallet && !busy && phase.kind !== "error" ? (
           <p className="text-center text-[10px] text-muted-foreground">
             Log in to enable on-chain swaps
           </p>
         ) : null}
-          </>
-        )}
       </div>
     </div>
   );
@@ -839,8 +728,6 @@ function busyLabel(phase: { kind: string }): string {
     case "awaiting-approval": return "Waiting for approval…";
     case "swapping": return "Confirm in wallet…";
     case "pending": return "Swapping…";
-    case "signing": return "Sign order…";
-    case "placing-order": return "Placing order…";
     default: return "Working…";
   }
 }
