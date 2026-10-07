@@ -329,6 +329,10 @@ export function OrderEntry({
   const typeBoxRef = useRef<HTMLDivElement | null>(null);
   const [qty, setQty] = useState("");
   const [pct, setPct] = useState(0);
+  const totalId = useId();
+  /** Non-empty while the trader is typing in Total directly; cleared whenever a
+   *  quantity is set elsewhere so the field falls back to the derived value. */
+  const [totalText, setTotalText] = useState("");
   const inch = useOneInchSwap();
   const direct = useArcSwap();
 
@@ -421,10 +425,27 @@ export function OrderEntry({
     if (side === "buy") {
       if (!(priceNum > 0)) return;
       const spend = (available * p) / 100;
-      setQty(Number((spend / priceNum).toPrecision(8)).toString());
+      updateQty(Number((spend / priceNum).toPrecision(8)).toString());
     } else {
-      setQty(Number(((available * p) / 100).toPrecision(8)).toString());
+      updateQty(Number(((available * p) / 100).toPrecision(8)).toString());
     }
+  };
+
+  /** Any quantity edit invalidates a hand-typed Total, so the two stay in sync. */
+  const updateQty = (v: string) => {
+    setQty(v);
+    setTotalText("");
+  };
+
+  /** Typing a Total (in the quote token) solves for the quantity instead. */
+  const onTotalChange = (v: string) => {
+    setTotalText(v);
+    const n = Number(v.replace(/,/g, ""));
+    if (!Number.isFinite(n) || n <= 0) {
+      setQty("");
+      return;
+    }
+    if (priceNum > 0) setQty(Number((n / priceNum).toPrecision(8)).toString());
   };
 
   const isMarket = orderType === "market";
@@ -629,7 +650,7 @@ export function OrderEntry({
         {/* Quantity + unit */}
         <div className="space-y-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            <Stepper label={`Quantity (${base})`} value={qty} onChange={setQty} unit={base} />
+            <Stepper label={`Quantity (${base})`} value={qty} onChange={updateQty} unit={base} />
           </div>
           <p className="h-3.5 truncate text-right font-mono text-[10px] leading-3.5 text-muted-foreground tabular-nums">
             {qty ? `≈ ${total.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${quote}` : "\u00a0"}
@@ -656,13 +677,23 @@ export function OrderEntry({
           </div>
         </div>
 
-        {/* Total */}
+        {/* Total — editable. Typing a USD value back-solves the quantity, so the
+            order can be sized either way round (amount or value). */}
         <div className="space-y-1.5">
-          <div className="home-glass flex h-9 min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 text-[11px]">
-            <span className="shrink-0 text-muted-foreground">Total</span>
-            <span className="truncate text-right font-mono tabular-nums">
-              {total > 0 ? `${total.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${quote}` : `— ${quote}`}
-            </span>
+          <div className="home-glass flex h-11 min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 text-[11px]">
+            <label htmlFor={totalId} className="shrink-0 cursor-text text-muted-foreground">
+              Total
+            </label>
+            <input
+              id={totalId}
+              inputMode="decimal"
+              placeholder={`0.00 ${quote}`}
+              value={totalText !== "" ? totalText : qty !== "" && total > 0 ? total.toLocaleString("en-US", { maximumFractionDigits: 2 }) : ""}
+              onChange={(e) => onTotalChange(e.target.value)}
+              onFocus={(e) => e.currentTarget.select()}
+              className="h-6 min-w-0 flex-1 cursor-text rounded bg-transparent text-right font-mono text-[13px] tabular-nums outline-none focus:bg-white/[0.06] focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
+            />
+            <span className="shrink-0 text-muted-foreground">{quote}</span>
           </div>
           <div className="flex min-w-0 justify-between gap-2 text-[11px]">
             <span className="text-muted-foreground">Avbl</span>
