@@ -1,5 +1,7 @@
 "use client";
 
+import { useArcSwap, type SwapPhase } from "@/hooks/use-arc-swap";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import type { ArcSwap } from "@/lib/arc-swaps";
@@ -270,6 +272,9 @@ export function OrderEntry({
   price,
   onPrice,
   onBbo,
+  tokenAddress,
+  pairAddress,
+  quoteAddress = "0x3600000000000000000000000000000000000000",
 }: {
   base?: string;
   quote?: string;
@@ -277,6 +282,12 @@ export function OrderEntry({
   onPrice: (v: string) => void;
   /** Refill the price field from the live market. */
   onBbo?: () => void;
+  /** Base token contract — the side that gets bought or sold. */
+  tokenAddress?: string;
+  /** Pool address (20-byte) or v4 pool id (32-byte) to route against. */
+  pairAddress?: string;
+  /** Quote token contract; USDC on Arc by default. */
+  quoteAddress?: string;
 }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   /** Market is the default: it is the order you can place without deciding a price. */
@@ -285,6 +296,28 @@ export function OrderEntry({
   const typeBoxRef = useRef<HTMLDivElement | null>(null);
   const [qty, setQty] = useState("");
   const [pct, setPct] = useState(0);
+  const { swap, phase, reset, hasWallet } = useArcSwap();
+
+  /** The qty field is always denominated in the base token, so a buy spends the
+   *  quote (USDC) and receives base; a sell does the reverse. */
+  const direction = side === "buy"
+    ? { tokenIn: quoteAddress, tokenOut: tokenAddress }
+    : { tokenIn: tokenAddress, tokenOut: quoteAddress };
+
+  const busy = phase.kind === "quoting" || phase.kind === "approving" || phase.kind === "awaiting-approval"
+    || phase.kind === "swapping" || phase.kind === "pending";
+
+  const onSubmit = async () => {
+    if (!tokenAddress || !pairAddress || !qty) return;
+    const amount = side === "buy" ? String(total) : qty;
+    if (!(Number(amount) > 0)) return;
+    await swap({
+      pairAddress,
+      tokenIn: direction.tokenIn as `0x${string}`,
+      tokenOut: direction.tokenOut as `0x${string}`,
+      amountIn: amount,
+    });
+  };
 
   const isMarket = orderType === "market";
   const activeType = ORDER_TYPES.find((t) => t.key === orderType) ?? ORDER_TYPES[0];
@@ -311,11 +344,9 @@ export function OrderEntry({
     if (next === "market") onBbo?.();
   };
 
-  const total = useMemo(() => {
-    const p = Number(price.replace(/,/g, "")) || 0;
-    const q = Number(qty) || 0;
-    return p * q;
-  }, [price, qty]);
+  // Plain arithmetic, not useMemo: memoizing two Number() calls made the React
+  // Compiler skip the whole component, which costs more than it saves.
+  const total = (Number(price.replace(/,/g, "")) || 0) * (Number(qty) || 0);
 
   /**
    * The button is ready as soon as the order is worth anything. The old $5
@@ -530,7 +561,8 @@ export function OrderEntry({
 
         <button
           type="button"
-          disabled={disabled}
+          disabled={disabled || busy || !tokenAddress || !pairAddress}
+          onClick={onSubmit}
           className={cn(
             "h-9 w-full rounded-md text-xs font-semibold disabled:opacity-60",
             side === "buy"
@@ -538,9 +570,54 @@ export function OrderEntry({
               : "bg-danger text-danger-foreground",
           )}
         >
-          {side === "buy" ? "Buy" : "Sell"} {base}
+          {busy ? busyLabel(phase) : `${side === "buy" ? "Buy" : "Sell"} ${base}`}
         </button>
+
+        {/* Swap status — the wallet flow is multi-step, so it is always visible. */}
+        {phase.kind === "error" ? (
+          <div className="flex items-start justify-between gap-2 rounded-lg bg-danger/10 px-2.5 py-2 text-[10px] text-danger">
+            <span className="min-w-0 break-words">{phase.message}</span>
+            <button type="button" onClick={reset} className="shrink-0 underline">dismiss</button>
+          </div>
+        ) : null}
+        {phase.kind === "awaiting-approval" || phase.kind === "pending" ? (
+          <a
+            href={`https://explorer.arc.io/tx/${phase.hash}`}
+            target="_blank"
+            rel="noreferrer"
+            className="block truncate rounded-lg bg-white/5 px-2.5 py-2 font-mono text-[10px] text-muted-foreground hover:text-foreground"
+          >
+            {phase.kind === "awaiting-approval" ? "Approval sent" : "Swap sent"}: {phase.hash.slice(0, 18)}…
+          </a>
+        ) : null}
+        {phase.kind === "done" ? (
+          <a
+            href={`https://explorer.arc.io/tx/${phase.hash}`}
+            target="_blank"
+            rel="noreferrer"
+            className="block truncate rounded-lg bg-success/10 px-2.5 py-2 text-[10px] text-success hover:underline"
+          >
+            Swapped ✓ {phase.hash.slice(0, 18)}…
+          </a>
+        ) : null}
+        {/* No wallet yet is a normal state, not an error — say so up front. */}
+        {!hasWallet && !busy && phase.kind !== "error" ? (
+          <p className="text-center text-[10px] text-muted-foreground">
+            Log in to enable on-chain swaps
+          </p>
+        ) : null}
       </div>
     </div>
   );
+}
+
+function busyLabel(phase: SwapPhase): string {
+  switch (phase.kind) {
+    case "quoting": return "Getting quote…";
+    case "approving": return "Approving…";
+    case "awaiting-approval": return "Waiting for approval…";
+    case "swapping": return "Confirm in wallet…";
+    case "pending": return "Swapping…";
+    default: return "Working…";
+  }
 }

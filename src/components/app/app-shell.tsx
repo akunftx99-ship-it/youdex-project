@@ -9,7 +9,6 @@ import {
   Home,
   Layers,
   Lock,
-  Plus,
   Send,
   Target,
   TrendingUp,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import { formatArcPrice } from "@/components/app/arc-market-table";
 import { TokenSearch } from "@/components/app/token-search";
+import { ConnectWalletButton } from "@/components/app/connect-wallet-button";
 import { ARC_HOT, ARC_TOP_VOLUME, type ArcToken } from "@/lib/arc-data";
 import { cn } from "@/lib/utils";
 
@@ -277,13 +277,7 @@ export function TopBar({
 
       <TokenSearch />
 
-      <Link
-        href="/fund"
-        className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[0_0_16px_rgba(74,222,128,0.25)] transition-all hover:bg-primary/90 active:scale-95"
-      >
-        <Plus className="h-4 w-4" />
-        Deposit
-      </Link>
+      <ConnectWalletButton />
 
       <Link
         href="/app"
@@ -335,13 +329,7 @@ export function AppShell({
             <Zap className="h-4 w-4 text-primary" />
             <span className="font-heading text-sm font-bold tracking-tight">{title}</span>
           </div>
-          <Link
-            href="/fund"
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Deposit
-          </Link>
+          <ConnectWalletButton compact />
         </div>
         {children}
       </main>

@@ -190,6 +190,8 @@ function SpotTerminal() {
               price={price}
               onPrice={handlePrice}
               onBbo={handleBbo}
+              tokenAddress={token.address}
+              pairAddress={token.pairAddress}
             />
           </div>
 

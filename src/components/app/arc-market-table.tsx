@@ -197,8 +197,6 @@ export function ArcMarketTable({
         </thead>
         <tbody>
           {tokens.map((token, index) => {
-            const flat = Math.abs(token.change.h24) < 0.005;
-  const up = token.change.h24 > 0;
             const isHot = hotSymbols?.includes(token.symbol);
             return (
               <tr
