@@ -1,6 +1,6 @@
 "use client";
 
-import { useArcSwap, type SwapPhase } from "@/hooks/use-arc-swap";
+import { useOneInchSwap, type InchSwapPhase } from "@/hooks/use-one-inch-swap";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
@@ -296,28 +296,40 @@ export function OrderEntry({
   const typeBoxRef = useRef<HTMLDivElement | null>(null);
   const [qty, setQty] = useState("");
   const [pct, setPct] = useState(0);
-  const { swap, phase, reset, hasWallet } = useArcSwap();
+  const { marketSwap, placeLimitOrder, phase, reset, hasWallet } = useOneInchSwap();
 
-  /** The qty field is always denominated in the base token, so a buy spends the
-   *  quote (USDC) and receives base; a sell does the reverse. */
-  const direction = side === "buy"
-    ? { tokenIn: quoteAddress, tokenOut: tokenAddress }
-    : { tokenIn: tokenAddress, tokenOut: quoteAddress };
+  const isMarketOrder = orderType === "market";
 
-  const busy = phase.kind === "quoting" || phase.kind === "approving" || phase.kind === "awaiting-approval"
-    || phase.kind === "swapping" || phase.kind === "pending";
-
+  /** Market spends the sold side; a limit order offers the maker side for the
+   *  taking side. Both derive from the same price x qty math. */
   const onSubmit = async () => {
-    if (!tokenAddress || !pairAddress || !qty) return;
-    const amount = side === "buy" ? String(total) : qty;
-    if (!(Number(amount) > 0)) return;
-    await swap({
-      pairAddress,
-      tokenIn: direction.tokenIn as `0x${string}`,
-      tokenOut: direction.tokenOut as `0x${string}`,
-      amountIn: amount,
-    });
+    if (!tokenAddress || !pairAddress || !qty || !(Number(total) > 0)) return;
+
+    if (isMarketOrder) {
+      const amount = side === "buy" ? String(total) : qty;
+      await marketSwap({
+        tokenIn: direction().tokenIn,
+        tokenOut: direction().tokenOut,
+        amountIn: amount,
+      });
+    } else {
+      await placeLimitOrder({
+        makerAsset: direction().tokenIn,   // what we offer
+        takerAsset: direction().tokenOut,  // what we want
+        makingAmount: side === "buy" ? String(total) : qty,
+        takingAmount: side === "buy" ? qty : String(total),
+      });
+    }
   };
+
+  /** Buy spends quote, sell spends base. */
+  const direction = () =>
+    side === "buy"
+      ? { tokenIn: quoteAddress as `0x${string}`, tokenOut: tokenAddress as `0x${string}` }
+      : { tokenIn: tokenAddress as `0x${string}`, tokenOut: quoteAddress as `0x${string}` };
+
+  const busy = ["quoting", "approving", "awaiting-approval", "swapping", "pending", "signing", "placing-order"]
+    .includes(phase.kind);
 
   const isMarket = orderType === "market";
   const activeType = ORDER_TYPES.find((t) => t.key === orderType) ?? ORDER_TYPES[0];
@@ -570,7 +582,11 @@ export function OrderEntry({
               : "bg-danger text-danger-foreground",
           )}
         >
-          {busy ? busyLabel(phase) : `${side === "buy" ? "Buy" : "Sell"} ${base}`}
+          {busy
+            ? busyLabel(phase)
+            : isMarketOrder
+              ? `${side === "buy" ? "Buy" : "Sell"} ${base}`
+              : "Place Limit Order"}
         </button>
 
         {/* Swap status — the wallet flow is multi-step, so it is always visible. */}
@@ -590,15 +606,20 @@ export function OrderEntry({
             {phase.kind === "awaiting-approval" ? "Approval sent" : "Swap sent"}: {phase.hash.slice(0, 18)}…
           </a>
         ) : null}
-        {phase.kind === "done" ? (
+        {phase.kind === "done" && phase.kind2 === "swap" && phase.hash ? (
           <a
             href={`https://explorer.arc.io/tx/${phase.hash}`}
             target="_blank"
             rel="noreferrer"
             className="block truncate rounded-lg bg-success/10 px-2.5 py-2 text-[10px] text-success hover:underline"
           >
-            Swapped ✓ {phase.hash.slice(0, 18)}…
+            Swapped ✓ {phase.hash.slice(0, 18)}…{phase.amountOut ? ` (out ${phase.amountOut})` : ""}
           </a>
+        ) : null}
+        {phase.kind === "done" && phase.kind2 === "order" && phase.orderHash ? (
+          <p className="block truncate rounded-lg bg-success/10 px-2.5 py-2 text-[10px] text-success">
+            Limit order live ✓ {phase.orderHash.slice(0, 18)}… — fills off-chain until matched
+          </p>
         ) : null}
         {/* No wallet yet is a normal state, not an error — say so up front. */}
         {!hasWallet && !busy && phase.kind !== "error" ? (
@@ -611,13 +632,15 @@ export function OrderEntry({
   );
 }
 
-function busyLabel(phase: SwapPhase): string {
+function busyLabel(phase: InchSwapPhase): string {
   switch (phase.kind) {
     case "quoting": return "Getting quote…";
     case "approving": return "Approving…";
     case "awaiting-approval": return "Waiting for approval…";
     case "swapping": return "Confirm in wallet…";
     case "pending": return "Swapping…";
+    case "signing": return "Sign order…";
+    case "placing-order": return "Placing order…";
     default: return "Working…";
   }
 }
