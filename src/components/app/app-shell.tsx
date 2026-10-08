@@ -161,6 +161,18 @@ export function NavLink({ item, active }: { item: NavItem; active?: boolean }) {
 /** Out-of-scope entries kept only as inert labels (never rendered in the sidebar). */
 export const OUT_OF_SCOPE_ICONS = { Target, ListTodo, BrainCircuit, Crown, Users, Send };
 
+/**
+ * The X mark. The profile slot links out to the project's account, so this is
+ * the real glyph rather than the old bird icon.
+ */
+function XLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
 /** Shimmer placeholder for a number that has not arrived from upstream yet. */
 function Pulse({ w, h = 11 }: { w: number; h?: number }) {
   return (
@@ -333,14 +345,17 @@ export function TopBar({
         </span>
       </Link>
 
-      <span
-        role="button"
-        aria-disabled="true"
-        title="Coming soon"
-        className="grid h-9 w-9 cursor-not-allowed place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-muted-foreground opacity-60"
+      {/* Profile slot -> the project's X account. */}
+      <a
+        href="https://x.com/Youdex_xyz"
+        target="_blank"
+        rel="noreferrer noopener"
+        aria-label="Youdex on X"
+        title="@Youdex_xyz on X"
+        className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-muted-foreground transition-all hover:border-primary/40 hover:bg-white/[0.07] hover:text-foreground"
       >
-        <User className="h-4 w-4" />
-      </span>
+        <XLogo className="h-3.5 w-3.5" />
+      </a>
     </header>
   );
 }
