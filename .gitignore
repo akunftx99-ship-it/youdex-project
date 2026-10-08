@@ -53,3 +53,9 @@ public/_logo-preview/
 
 # Runtime log
 dev.log
+
+# Cloudflare adapter output / local secrets
+.open-next/
+.dev.vars
+.wrangler/
+cloudflare-env.d.ts

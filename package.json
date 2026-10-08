@@ -2,7 +2,7 @@
   "name": "youdex",
   "version": "0.5.1",
   "private": true,
-  "description": "YouDex — ARC-network spot exchange interface",
+  "description": "YouDex \u2014 ARC-network spot exchange interface",
   "author": "JCodesMore",
   "license": "MIT",
   "keywords": [
@@ -24,7 +24,11 @@
     "start": "next start -p 3210",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run build"
+    "check": "npm run lint && npm run typecheck && npm run build",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
     "@1inch/limit-order-sdk": "^5.4.3",
@@ -43,6 +47,7 @@
     "viem": "^2.56.5"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24",
     "@types/react": "^19",
@@ -50,6 +55,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.148.0"
   }
 }

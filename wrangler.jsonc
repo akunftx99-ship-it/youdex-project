@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "youdex",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-25",
+  "compatibility_flags": [
+    // viem (our API routes) needs the Node builtins shim
+    "nodejs_compat",
+    // outbound fetches to Peach / GeckoTerminal / Arc RPC / 1inch
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      // Must match "name" above — the worker calls itself for ISR revalidation.
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "youdex"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+  // No R2 binding: nothing here needs incremental caching, and leaving it out
+  // keeps the deploy token's permission surface small.
+  //
+  // Token logos come from next/image? No — they render through a plain <img>
+  // in token-avatar.tsx, so no Images binding is required either.
+}
