@@ -6,13 +6,14 @@
  * feed the market table already uses; anything the feed does not price falls
  * back to the catalog's static number. Typical latency: one RPC round trip.
  */
-import { createPublicClient, http, formatUnits, getAddress, type Address } from "viem";
-import { ARC_RPC_URL, ARC_TOKENS, arc } from "./arc-chain";
+import { formatUnits, getAddress, type Address } from "viem";
+import { ARC_TOKENS } from "./arc-chain";
 
 /** ERC-20 USDC — the quote currency of every Arc pool. */
 const USDC: string = ARC_TOKENS.USDC;
 import { ARC_EVERY, ARC_HOT, type ArcToken } from "./arc-data";
 import { fetchArcStats } from "./arc-live";
+import { ArcRpcUnavailableError, arcClient } from "./arc-rpc";
 
 /** Multicall3 on Arc — batched reads in a single eth_call. */
 const MULTICALL3: Address = "0xcA11bde05977b3631167028862bE2a173976CA11";
@@ -51,7 +52,7 @@ export type ArcPortfolio = {
 };
 
 function client() {
-  return createPublicClient({ chain: arc, transport: http(ARC_RPC_URL, { timeout: 20_000, batch: true }) });
+  return arcClient();
 }
 
 /** Catalog (plus USDC) deduped by address — the set the wallet is probed for. */
@@ -66,7 +67,19 @@ function portfolioTokens(): Array<{ address: Address; token: ArcToken | null }> 
   return [...byAddress.entries()].map(([address, token]) => ({ address: address as Address, token }));
 }
 
+/**
+ * Short-lived memo. Clients poll every 25s, but two pages (Dashboard and Fund)
+ * can ask for the same wallet within a second, and every miss costs an eth_call
+ * against an endpoint that throttles.
+ */
+const CACHE_TTL_MS = 15_000;
+const cache = new Map<string, { at: number; value: ArcPortfolio }>();
+
 export async function readArcPortfolio(walletInput: string): Promise<ArcPortfolio> {
+  const key = walletInput.toLowerCase();
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+
   const wallet = getAddress(walletInput);
   const c = client();
   const tokens = portfolioTokens();
@@ -84,6 +97,13 @@ export async function readArcPortfolio(walletInput: string): Promise<ArcPortfoli
     }),
     fetchArcStats([...new Set([...tokens.map((t) => t.address.toLowerCase()), ...ARC_HOT.map((t) => t.address.toLowerCase())])]).catch(() => ({} as Awaited<ReturnType<typeof fetchArcStats>>)),
   ]);
+
+  // A dead RPC must not read as a zero balance. viem only reports per-call
+  // failure when the endpoint answered at all; if nothing came back, say so.
+  const answered = balances.filter((b) => b.status === "success").length;
+  if (answered === 0) {
+    throw new ArcRpcUnavailableError("balance sweep returned no answers");
+  }
 
   const items: PortfolioItem[] = [];
   let pricedCount = 0;
@@ -117,7 +137,7 @@ export async function readArcPortfolio(walletInput: string): Promise<ArcPortfoli
   });
 
   items.sort((a, b) => b.valueUsd - a.valueUsd);
-  return {
+  const result: ArcPortfolio = {
     address: wallet,
     totalUsd: items.reduce((sum, item) => sum + item.valueUsd, 0),
     usdcBalance,
@@ -126,6 +146,8 @@ export async function readArcPortfolio(walletInput: string): Promise<ArcPortfoli
     unpricedCount,
     updatedAt: Date.now(),
   };
+  cache.set(key, { at: Date.now(), value: result });
+  return result;
 }
 
 /** Trim a formatted balance for display: 6 sig-ish, no exponent surprises. */

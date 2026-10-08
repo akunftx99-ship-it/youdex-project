@@ -6,8 +6,8 @@
  * Arc was confirmed to hit). Quotes and calldata come from their Swap API; the
  * browser wallet signs and pays for the single router tx.
  */
-import { createPublicClient, http, type Address, type Hex } from "viem";
-import { arc, ARC_RPC_URL } from "./arc-chain";
+import { type Address, type Hex } from "viem";
+import { arcClient } from "./arc-rpc";
 
 export const INCH_CHAIN_ID = 5042;
 export const INCH_SWAP_API = "https://api.1inch.dev/swap/v6.1";
@@ -58,7 +58,7 @@ export async function inchSwapTx(args: {
 }
 
 export async function inchDecimals(tokens: Address[]): Promise<Record<string, number>> {
-  const client = createPublicClient({ chain: arc, transport: http(ARC_RPC_URL, { timeout: 15_000 }) });
+  const client = arcClient();
   const out: Record<string, number> = {};
   for (const t of tokens) {
     try {
