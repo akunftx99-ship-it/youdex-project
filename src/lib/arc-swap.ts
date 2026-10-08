@@ -12,11 +12,9 @@
  *    from the feed's dex label, which mislabels Arc pools.
  */
 import {
-  createPublicClient,
   decodeEventLog,
   encodeAbiParameters,
   encodeFunctionData,
-  http,
   keccak256,
   parseAbiItem,
   parseAbiParameters,
@@ -24,10 +22,8 @@ import {
   toHex,
   type Address,
   type Hex,
-  type PublicClient,
 } from "viem";
 import {
-  ARC_RPC_URL,
   ARC_FACTORIES,
   ERC20_ABI,
   UNISWAP_ARC,
@@ -35,7 +31,6 @@ import {
   V3_QUOTER_V2_ABI,
   V3_SWAP_ROUTER_ABI,
   V4_QUOTER_ABI,
-  arc,
   type ArcVenue,
 } from "./arc-chain";
 
@@ -49,13 +44,14 @@ export type PoolKey = {
 
 const ZERO = "0x0000000000000000000000000000000000000000" as Address;
 
-let _client: PublicClient | null = null;
-export function arcClient(): PublicClient {
-  if (!_client) {
-    _client = createPublicClient({ chain: arc, transport: http(ARC_RPC_URL, { timeout: 15_000, retryCount: 2 }) });
-  }
-  return _client;
-}
+/**
+ * Re-exported from arc-rpc so swaps, the portfolio reader and the verify route
+ * all read through the same fallback transport (Arc's own endpoint throttles
+ * Cloudflare's IPs, the mirrors don't).
+ */
+import { arcClient } from "./arc-rpc";
+
+export { arcClient };
 
 const isPoolId = (s: string) => /^0x[0-9a-fA-F]{64}$/.test(s);
 
