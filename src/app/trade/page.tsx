@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown, Loader2, RotateCw, TrendingDown, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
+import { Reveal } from "@/components/app/reveal";
 import { ArcTokenMark, formatArcPrice, formatUsd } from "@/components/app/arc-market-table";
 import { useTradeToken } from "@/hooks/use-trade-token";
 import { useArcBalances } from "@/hooks/use-arc-balances";
@@ -147,7 +148,7 @@ function SpotTerminal() {
         <div className="pb-8">
           <div className="flex min-h-[640px] gap-3 border-b border-white/[0.06] p-3">
             {/* Chart */}
-            <div className="home-glass flex min-w-0 flex-1 flex-col rounded-2xl p-3">
+            <Reveal className="home-glass flex min-w-0 flex-1 flex-col rounded-2xl p-3">
               <div className="relative z-10 mb-2 flex flex-wrap items-center gap-x-1 gap-y-1">
                 {TIMEFRAMES.map((entry) => (
                   <button
@@ -184,7 +185,7 @@ function SpotTerminal() {
                   </button>
                 ))}
               </div>
-            </div>
+            </Reveal>
 
             {/* Recent swaps — 220px. Keyed per pair so the tape reloads on switch. */}
             <RecentSwaps
@@ -207,7 +208,7 @@ function SpotTerminal() {
           </div>
 
           {/* ---- Holdings / Open orders ---- */}
-          <div className="px-4 pb-4 pt-3">
+          <Reveal delay={1} className="px-4 pb-4 pt-3">
             <div className="mb-3 flex items-center gap-4">
               {(
                 [
@@ -240,7 +241,7 @@ function SpotTerminal() {
             <p className="py-6 text-center text-xs text-muted-foreground">
               {panelTab === "holdings" ? "No spot holdings" : "No open orders"}
             </p>
-          </div>
+          </Reveal>
         </div>
       </div>
     </AppShell>

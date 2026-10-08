@@ -24,6 +24,7 @@ import {
   BrainCircuit,
 } from "lucide-react";
 import { formatArcPrice } from "@/components/app/arc-market-table";
+import { PageTransition } from "@/components/app/reveal";
 import { TokenSearch } from "@/components/app/token-search";
 import { ConnectWalletButton } from "@/components/app/connect-wallet-button";
 import { ARC_HOT, ARC_TOP_VOLUME, type ArcToken } from "@/lib/arc-data";
@@ -373,7 +374,7 @@ export function AppShell({
           </div>
           <ConnectWalletButton compact />
         </div>
-        {children}
+        <PageTransition>{children}</PageTransition>
       </main>
     </div>
   );

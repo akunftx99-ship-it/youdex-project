@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
+import { Reveal } from "@/components/app/reveal";
 import { ArcMarketTable, formatUsd } from "@/components/app/arc-market-table";
 import {
   ARC_ALL,
@@ -82,8 +83,12 @@ export default function MarketsPage() {
             { label: "Network", value: ARC_CHAIN.toUpperCase(), sub: "Live pools, read on-chain" },
             { label: "24h Volume", value: formatUsd(totals.volume || ARC_TOTAL_VOLUME_24H), sub: "All tracked pairs" },
             { label: "Liquidity", value: formatUsd(totals.liquidity || ARC_TOTAL_LIQUIDITY), sub: "All tracked pools" },
-          ].map((card) => (
-            <div key={card.label} className="home-glass rounded-2xl p-5">
+          ].map((card, i) => (
+            <Reveal
+              key={card.label}
+              delay={(i + 1) as 1 | 2 | 3}
+              className="home-glass rounded-2xl p-5"
+            >
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 {card.label}
               </p>
@@ -91,11 +96,11 @@ export default function MarketsPage() {
                 {card.value}
               </p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">{card.sub}</p>
-            </div>
+            </Reveal>
           ))}
         </section>
 
-        <section className="home-glass rounded-2xl p-5 sm:p-6">
+        <Reveal as="section" delay={2} className="home-glass rounded-2xl p-5 sm:p-6">
           <div className="mb-5 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] p-1">
             {TABS.map((entry) => {
               const active = tab === entry.key;
@@ -144,7 +149,7 @@ export default function MarketsPage() {
               No ARC pairs match “{query}”.
             </p>
           )}
-        </section>
+        </Reveal>
       </div>
     </AppShell>
   );

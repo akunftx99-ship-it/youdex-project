@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useWallets } from "@privy-io/react-auth";
 import { AppShell } from "@/components/app/app-shell";
+import { Reveal } from "@/components/app/reveal";
 import { TokenAvatar } from "@/components/app/token-avatar";
 import { formatPortfolioAmount, formatUsd } from "@/lib/arc-portfolio";
 import { useArcPortfolio } from "@/hooks/use-arc-portfolio";
@@ -25,7 +26,6 @@ function readPreview(): string | undefined {
 
 export default function FundPage() {
   const [hidden, setHidden] = useState(false);
-  const [range, setRange] = useState("7D");
   const [tab, setTab] = useState<"assets" | "history">("assets");
 
   // Holdings come straight off Arc's RPC (one batched Multicall3 sweep), keyed
@@ -52,7 +52,7 @@ export default function FundPage() {
     <AppShell current="/fund" title="Fund">
       <div className="mx-auto w-full max-w-[1400px] space-y-6 p-4 sm:p-6 lg:p-8">
         {/* ---- Summary ---- */}
-        <section className="home-glass rounded-2xl p-6">
+        <Reveal as="section" className="home-glass rounded-2xl p-6">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div>
               <div className="flex items-center gap-2">
@@ -140,53 +140,10 @@ export default function FundPage() {
               <p className="mt-0.5 text-[11px] text-muted-foreground">Futures equity · locked</p>
             </div>
           </div>
-        </section>
-
-        {/* ---- PNL panel ---- */}
-        <section className="home-glass rounded-2xl p-5 sm:p-6">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              Portfolio value · {range}
-            </span>
-            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
-              {["7D", "30D", "90D"].map((entry) => (
-                <button
-                  key={entry}
-                  type="button"
-                  onClick={() => setRange(entry)}
-                  className={cn(
-                    "h-7 rounded-full px-3 text-[11px] font-semibold transition-colors",
-                    range === entry
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {entry}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative grid h-[200px] place-items-center rounded-xl border border-white/[0.07] bg-[#0b0f14]">
-            <svg viewBox="0 0 800 200" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-              {[40, 90, 140].map((y) => (
-                <line key={y} x1="0" y1={y} x2="800" y2={y} stroke="rgba(255,255,255,0.05)" />
-              ))}
-              <line x1="0" y1="150" x2="800" y2="150" stroke="rgba(255,255,255,0.16)" strokeWidth="1" strokeDasharray="4 7" />
-            </svg>
-            <p className="relative max-w-[280px] text-center text-xs text-muted-foreground">
-              No trade history yet — this line fills in after your first swap.
-            </p>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between font-mono text-xs text-muted-foreground">
-            <span>—</span>
-            <span>PNL · {range}</span>
-          </div>
-        </section>
+        </Reveal>
 
         {/* ---- Assets / History ---- */}
-        <section className="home-glass rounded-2xl p-5 sm:p-6">
+        <Reveal as="section" delay={1} className="home-glass rounded-2xl p-5 sm:p-6">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               {(["assets", "history"] as const).map((entry) => (
@@ -274,7 +231,7 @@ export default function FundPage() {
               No transactions yet.
             </p>
           )}
-        </section>
+        </Reveal>
       </div>
     </AppShell>
   );

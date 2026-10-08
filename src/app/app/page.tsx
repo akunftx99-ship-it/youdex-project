@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
+import { Reveal } from "@/components/app/reveal";
 import { ArcMarketTable, formatUsd } from "@/components/app/arc-market-table";
 import {
   ARC_ALL,
@@ -103,7 +104,7 @@ export default function DashboardPage() {
       <div className="mx-auto w-full max-w-[1400px] space-y-6 p-4 sm:p-6 lg:p-8">
         {/* ---- Top row ---- */}
         <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
-          <section className="home-glass rounded-2xl p-6">
+          <Reveal as="section" className="home-glass rounded-2xl p-6">
             <div className="flex flex-wrap items-start justify-between gap-6">
               <div>
                 <div className="flex items-center gap-2">
@@ -175,9 +176,9 @@ export default function DashboardPage() {
                 </span>
               </div>
             </div>
-          </section>
+          </Reveal>
 
-          <section className="home-glass rounded-2xl p-6">
+          <Reveal as="section" delay={1} className="home-glass rounded-2xl p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-success" />
@@ -239,11 +240,11 @@ export default function DashboardPage() {
                 <p className="mt-1 truncate text-[11px] text-muted-foreground">{top.name}</p>
               </div>
             ) : null}
-          </section>
+          </Reveal>
         </div>
 
         {/* ---- Market table ---- */}
-        <section className="home-glass rounded-2xl p-5 sm:p-6">
+        <Reveal as="section" delay={2} className="home-glass rounded-2xl p-5 sm:p-6">
           <div className="mb-5 flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] p-1">
             {TABS.map((entry) => {
               const active = tab === entry.key;
@@ -281,7 +282,7 @@ export default function DashboardPage() {
           </div>
 
           <ArcMarketTable tokens={rows} hotSymbols={board.hotSymbols} live={hasLive} />
-        </section>
+        </Reveal>
       </div>
     </AppShell>
   );
